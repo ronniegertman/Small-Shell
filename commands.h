@@ -5,14 +5,14 @@
 =============================================================================*/
 #include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <string>
 #include <vector>
+#include "my_system_call.h"
 
 #define CMD_LENGTH_MAX 120
 #define ARGS_NUM_MAX 20
 #define JOBS_NUM_MAX 100
-
+#define MAX_ARGS 20
 
 /*=============================================================================
 * error handling - some useful macros and examples of error handling,
@@ -53,17 +53,25 @@ typedef enum {
 	//feel free to add more values here or delete this
 } CommandResult;
 
-typedef struct {
-			bool bg;
-			std::vector<std::string> args;
-			int nargs;
-			std::string cmd;
-		} shell_cmd;
+class ShellCommand {
+	public:
+		std::string command;
+		std::vector<std::string> args;
+		bool isBackground;
+		pid_t pid;
+		int nargs;
+};
 
+class Job {
+	public:
+		int jobId;
+		int status;
+		ShellCommand* cmd;
+};
 
 /*=============================================================================
 * global functions
 =============================================================================*/
 int parseCommandExample(char* line);
-
+void perrorSmash(const char* cmd, const char* msg);
 #endif //COMMANDS_H

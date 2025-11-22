@@ -50,7 +50,12 @@ int main(int argc, char* argv[])
 		strcpy(_cmd, _line);
 		//execute command
 		std::string cmdStr(_cmd);
-		std::vector<std::string> tokens = tokenize_words(cmdStr);	
+		std::vector<std::string> tokens = tokenize_words(cmdStr);
+		
+		for (auto token : tokens) {
+			printf("Token: '%s',\t", token.c_str());
+		}
+		printf("\n");
 		//initialize buffers for next command
 		_line[0] = '\0';
 		_cmd[0] = '\0';

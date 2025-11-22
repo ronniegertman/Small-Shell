@@ -1,32 +1,65 @@
 //commands.c
 #include "commands.h"
-
-
+#include <unistd.h>
+#include <string.h>
 
 // showpid
-void showpid(shell_cmd& cmd)
+void showpid(ShellCommand& cmd)
 {
 	if(cmd.nargs != 0) {
 		perrorSmash("showpid", "expected 0 arguments");
 		return;
 	}
-	printf("smash pid is %d\n", getpid());
+
+	pid_t pid;
+	if(cmd.isBackground) {
+		pid_t fork_pid = fork();
+		if(fork_pid == 0) {
+			//child 
+			pid = getppid();
+			exit(0);
+		}
+		else {
+			//parent
+			my_system_call(SYS_WAITPID, fork_pid, NULL, 0);
+		}
+	}else {
+		pid = getpid();
+	}
+
+	printf("smash pid is %d\n",pid);
 }
 
 //pwd
-void pwd(shell_cmd& cmd){
+void pwd(ShellCommand& cmd){
 	if(cmd.nargs != 0) {
 		perrorSmash("pwd", "expected 0 arguments");
 		return;
 	}
-	char cwd[CMD_LENGTH_MAX];
-	if (getcwd(cwd, sizeof(cwd)) != NULL) {
-		printf("%s\n", cwd);
+	char cwd[CMD_LENGTH_MAX]; //current working directory
+	if(cmd.isBackground){
+		pid_t fork_pid = fork();
+		if(fork_pid == 0) {
+			//child 
+			getcwd(cwd, sizeof(cwd));
+			exit(0);
+		}
+		else {
+			//parent
+			my_system_call(SYS_WAITPID, fork_pid, NULL, 0);
+		}
+
+	} else {
+		getcwd(cwd, sizeof(cwd));
 	}
+	printf("%s\n", cwd);
+	
 }
 
 //cd
-void cd(shell_cmd& cmd){
+char prev_dir[CMD_LENGTH_MAX] = "";
+
+void cd(ShellCommand& cmd){
 	if(cmd.nargs != 1) {
 		perrorSmash("cd", "expected 1 argument");
 		return;
