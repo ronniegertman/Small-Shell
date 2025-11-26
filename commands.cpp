@@ -2,6 +2,14 @@
 #include "commands.h"
 #include <unistd.h>
 #include <string.h>
+#include "my_system_call.h"
+#include <vector>
+
+// jobs vector
+std::vector<ShellCommand> jobsList;
+
+// last working directory
+
 
 // showpid
 void showpid(ShellCommand& cmd)
@@ -61,12 +69,31 @@ char prev_dir[CMD_LENGTH_MAX] = "";
 
 void cd(ShellCommand& cmd){
 	if(cmd.nargs != 1) {
-		perrorSmash("cd", "expected 1 argument");
+		perrorSmash("cd", "expected 1 arguments");
 		return;
 	}
-	if (chdir(cmd.args[1].c_str()) != 0) {
-		perrorSmash("cd", "chdir failed");
-	}
+	char cwd[CMD_LENGTH_MAX]; //current working directory
+	getcwd(cwd, sizeof(cwd));
+
+	std::string currentDir = cwd;
+	std::string targetDir;
+	if(cmd.args[1] == "-") {
+		if(strlen(prev_dir) == 0) {
+			perrorSmash("cd", "old pwd not set");
+			return;
+		}
+		targetDir = std::string(prev_dir);
+	} else if(cmd.args[1] == ".."){
+		targetDir = currentDir.substr(0, currentDir.find_last_of('/'));
+		if(targetDir.empty()) {
+			targetDir = "/";
+		}
+	} else {
+		targetDir = cmd.args[1];
+	}	
+	// performing the dir change:
+	chdir(targetDir.c_str());
+	oldPwd = currentDir;
 }
 
 
@@ -82,35 +109,35 @@ void perrorSmash(const char* cmd, const char* msg)
 }
 
 //example function for parsing commands
-int parseCmdExample(char* line)
-{
-	char* delimiters = " \t\n"; //parsing should be done by spaces, tabs or newlines
-	char* cmd = strtok(line, delimiters); //read strtok documentation - parses string by delimiters
-	if(!cmd)
-		return INVALID_COMMAND; //this means no tokens were found, most like since command is invalid
+// int parseCmdExample(char* line)
+// {
+// 	char* delimiters = " \t\n"; //parsing should be done by spaces, tabs or newlines
+// 	char* cmd = strtok(line, delimiters); //read strtok documentation - parses string by delimiters
+// 	if(!cmd)
+// 		return INVALID_COMMAND; //this means no tokens were found, most like since command is invalid
 	
-	char* args[MAX_ARGS];
-	int nargs = 0;
-	args[0] = cmd; //first token before spaces/tabs/newlines should be command name
-	for(int i = 1; i < MAX_ARGS; i++)
-	{
-		args[i] = strtok(NULL, delimiters); //first arg NULL -> keep tokenizing from previous call
-		if(!args[i])
-			break;
-		nargs++;
-	}
-	/*
-	At this point cmd contains the command string and the args array contains
-	the arguments. You can return them via struct/class, for example in C:
-		typedef struct {
-			char* cmd;
-			char* args[MAX_ARGS];
-		} Command;
-	Or maybe something more like this:
-		typedef struct {
-			bool bg;
-			char** args;
-			int nargs;
-		} CmdArgs;
-	*/
-}
+// 	char* args[MAX_ARGS];
+// 	int nargs = 0;
+// 	args[0] = cmd; //first token before spaces/tabs/newlines should be command name
+// 	for(int i = 1; i < MAX_ARGS; i++)
+// 	{
+// 		args[i] = strtok(NULL, delimiters); //first arg NULL -> keep tokenizing from previous call
+// 		if(!args[i])
+// 			break;
+// 		nargs++;
+// 	}
+// 	/*
+// 	At this point cmd contains the command string and the args array contains
+// 	the arguments. You can return them via struct/class, for example in C:
+// 		typedef struct {
+// 			char* cmd;
+// 			char* args[MAX_ARGS];
+// 		} Command;
+// 	Or maybe something more like this:
+// 		typedef struct {
+// 			bool bg;
+// 			char** args;
+// 			int nargs;
+// 		} CmdArgs;
+// 	*/
+// }

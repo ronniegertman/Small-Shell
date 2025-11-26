@@ -52,10 +52,10 @@ int main(int argc, char* argv[])
 		std::string cmdStr(_cmd);
 		std::vector<std::string> tokens = tokenize_words(cmdStr);
 		
+		printf("Tokens:\n");
 		for (auto token : tokens) {
-			printf("Token: '%s',\t", token.c_str());
+			printf("'%s'\n", token.c_str());
 		}
-		printf("\n");
 		//initialize buffers for next command
 		_line[0] = '\0';
 		_cmd[0] = '\0';

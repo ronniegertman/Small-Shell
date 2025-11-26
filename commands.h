@@ -7,7 +7,7 @@
 #include <stdio.h>
 #include <string>
 #include <vector>
-#include "my_system_call.h"
+
 
 #define CMD_LENGTH_MAX 120
 #define ARGS_NUM_MAX 20
@@ -67,11 +67,19 @@ class Job {
 		int jobId;
 		int status;
 		ShellCommand* cmd;
+		int pid;
+		int secondsElapsed;
+		
 };
+
 
 /*=============================================================================
 * global functions
 =============================================================================*/
 int parseCommandExample(char* line);
 void perrorSmash(const char* cmd, const char* msg);
+void showpid(ShellCommand& cmd);
+void pwd(ShellCommand& cmd);
+void cd(ShellCommand& cmd);
+int generateJobId();
 #endif //COMMANDS_H
