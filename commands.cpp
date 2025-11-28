@@ -4,12 +4,73 @@
 #include <string.h>
 #include "my_system_call.h"
 #include <vector>
+#include <ctime>
+#include <sstream>
+#include <sys/stat.h>
+// ShellCommand class constructor
+ShellCommand::ShellCommand(std::string cmd, std::vector<std::string> arguments, bool bg, pid_t p, int n)
+	: command(std::move(cmd)), args(std::move(arguments)), isBackground(bg), pid(p), nargs(n) {}
 
-// jobs vector
-std::vector<ShellCommand> jobsList;
+// Job class functions
+Job::Job(const ShellCommand& command, int jobId, int p, int stat)
+	: jobId(jobId), cmd(command), pid(p), status(stat), startTime(std::time(nullptr)) {}
 
-// last working directory
+double Job::getElapsedTime() const {
+	return difftime(std::time(nullptr), this->startTime);
+}
 
+// JobManager class functions
+int JobManager::generateJobId() {
+	for (int i = 0; i < jobsList.size(); i++) {
+        if (jobsList[i].jobId != i+1) {
+            return i+1;
+        }
+    }
+    return jobsList.size() + 1;
+}
+
+int JobManager::addJob(const ShellCommand& cmd, int pid, int status) {
+	// enter new job sorted by jobId
+	Job newJob(cmd, this->generateJobId(), pid, status);
+	auto it = jobsList.begin();
+	while(it != jobsList.end() && it->jobId < newJob.jobId) {
+		it++;
+	}
+	jobsList.insert(it, newJob);
+	return newJob.jobId;
+}
+
+int JobManager::removeJobById(int jobId) {
+	for(auto it = jobsList.begin(); it != jobsList.end(); it++) {
+		if(it->jobId == jobId) {
+			jobsList.erase(it);
+			return 0; // success
+		}
+	}
+	return -1; // not found
+}
+
+int JobManager::removeJobByPid(int pid) {
+	for(auto it = jobsList.begin(); it != jobsList.end(); it++) {
+		if(it->pid == pid) {
+			jobsList.erase(it);
+			return 0; // success
+		}
+	}
+	return -1; // not found
+}
+
+std::string JobManager::printJobsList() {
+    std::stringstream out;
+    for (const auto& job : jobsList) {
+        out << "[" << job.jobId << "] "
+            << job.cmd.command << " "
+            << "(pid " << job.pid << ") "
+            << "status=" << job.status << " "
+            << "time=" << job.getElapsedTime() << "s\n";
+    }
+    return out.str();
+}
 
 // showpid
 void showpid(ShellCommand& cmd)
@@ -65,6 +126,19 @@ void pwd(ShellCommand& cmd){
 }
 
 //cd
+bool isRegularFile(const std::string& path) {
+    struct stat info;
+    if (stat(path.c_str(), &info) != 0) return false; // does not exist
+    return S_ISREG(info.st_mode);                       // true if regular file
+}
+
+bool isDirectory(const std::string& path) {
+    struct stat info;
+    if (stat(path.c_str(), &info) != 0) return false;
+    return S_ISDIR(info.st_mode);
+}
+
+
 char prev_dir[CMD_LENGTH_MAX] = "";
 
 void cd(ShellCommand& cmd){
@@ -77,23 +151,35 @@ void cd(ShellCommand& cmd){
 
 	std::string currentDir = cwd;
 	std::string targetDir;
-	if(cmd.args[1] == "-") {
+	//check if address ilegal
+	if(cmd.args[0] == "-") {
 		if(strlen(prev_dir) == 0) {
 			perrorSmash("cd", "old pwd not set");
 			return;
 		}
 		targetDir = std::string(prev_dir);
-	} else if(cmd.args[1] == ".."){
+	} else if(cmd.args[0] == ".."){
 		targetDir = currentDir.substr(0, currentDir.find_last_of('/'));
 		if(targetDir.empty()) {
 			targetDir = "/";
 		}
 	} else {
-		targetDir = cmd.args[1];
+		targetDir = cmd.args[0];
 	}	
+	// checking for valid directory
+	if(isRegularFile(targetDir)) {
+		perrorSmash("cd", "not a directory");
+		return;
+	}
+	if(!isDirectory(targetDir)) {
+		perrorSmash("cd", "target directory does not exist");
+		return;
+	}
+
 	// performing the dir change:
 	chdir(targetDir.c_str());
-	oldPwd = currentDir;
+	// updating prev_dir
+	strcpy(prev_dir, cwd);
 }
 
 

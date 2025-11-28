@@ -60,16 +60,29 @@ class ShellCommand {
 		bool isBackground;
 		pid_t pid;
 		int nargs;
+
+		ShellCommand(std::string cmd, std::vector<std::string> arguments, bool bg, pid_t p, int n);
 };
 
 class Job {
 	public:
 		int jobId;
 		int status;
-		ShellCommand* cmd;
+		ShellCommand cmd;
 		int pid;
-		int secondsElapsed;
-		
+		time_t startTime;
+		Job(const ShellCommand& command, int jobId, int pid, int status);
+		double getElapsedTime() const;
+};
+
+class JobManager{
+	std::vector<Job> jobsList;
+	public:
+		int generateJobId(); // job vector will be sorted
+		int addJob(const ShellCommand& cmd, int pid, int status);
+		int removeJobById(int jobId);
+		int removeJobByPid(int pid);
+		std::string printJobsList();
 };
 
 
@@ -80,6 +93,8 @@ int parseCommandExample(char* line);
 void perrorSmash(const char* cmd, const char* msg);
 void showpid(ShellCommand& cmd);
 void pwd(ShellCommand& cmd);
+bool isRegularFile(const std::string& path);
+bool isDirectory(const std::string& path);
 void cd(ShellCommand& cmd);
-int generateJobId();
+
 #endif //COMMANDS_H
