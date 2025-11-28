@@ -71,7 +71,8 @@ class Job {
 		ShellCommand cmd;
 		int pid;
 		time_t startTime;
-		Job(const ShellCommand& command, int jobId, int pid, int status);
+		bool isBackground;
+		Job(const ShellCommand& command, int jobId, int pid, int status, bool isBg);
 		double getElapsedTime() const;
 };
 
@@ -79,10 +80,12 @@ class JobManager{
 	std::vector<Job> jobsList;
 	public:
 		int generateJobId(); // job vector will be sorted
-		int addJob(const ShellCommand& cmd, int pid, int status);
+		int addJob(const ShellCommand& cmd, int pid, int status, bool isBg);
 		int removeJobById(int jobId);
 		int removeJobByPid(int pid);
 		std::string printJobsList();
+		Job* getJobById(int jobId);
+		bool isEmpty();
 };
 
 
@@ -96,5 +99,8 @@ void pwd(ShellCommand& cmd);
 bool isRegularFile(const std::string& path);
 bool isDirectory(const std::string& path);
 void cd(ShellCommand& cmd);
+void jobs(ShellCommand& cmd, JobManager& jm);
+void kill(ShellCommand& cmd, JobManager& jm);
+void fg(ShellCommand& cmd, JobManager& jm);
 
 #endif //COMMANDS_H
