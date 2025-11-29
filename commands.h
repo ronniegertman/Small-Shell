@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <string>
 #include <vector>
+#include "shellcommand.h"
+#include "jobs.h"
 
 
 #define CMD_LENGTH_MAX 120
@@ -52,45 +54,6 @@ typedef enum {
 	SMASH_FAIL
 	//feel free to add more values here or delete this
 } CommandResult;
-
-class ShellCommand {
-	public:
-		std::string command;
-		std::vector<std::string> args;
-		bool isBackground;
-		pid_t pid;
-		int nargs;
-
-		ShellCommand(std::string cmd, std::vector<std::string> arguments, bool bg, pid_t p, int n);
-};
-
-class Job {
-	public:
-		int jobId;
-		int status;
-		ShellCommand cmd;
-		int pid;
-		time_t startTime;
-		bool isBackground;
-		Job(const ShellCommand& command, int jobId, int pid, int status, bool isBg);
-		double getElapsedTime() const;
-};
-
-class JobManager{
-	std::vector<Job> jobsList;
-	public:
-		int generateJobId(); // job vector will be sorted
-		int addJob(const ShellCommand& cmd, int pid, int status, bool isBg);
-		int removeJobById(int jobId);
-		int removeJobByPid(int pid);
-		std::string printJobsList();
-		Job* getJobById(int jobId);
-		bool isEmpty();
-		int size();
-		int getLastJobId();
-		int killJobById(int jobId);
-};
-
 
 /*=============================================================================
 * global functions

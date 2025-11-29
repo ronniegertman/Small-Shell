@@ -66,27 +66,27 @@ std::vector<std::string> tokenize_words(const std::string& input) {
 // }
 
 int main(int argc, char* argv[]){
-    // ShellCommand c1("ls", {"-l"}, false, 1234, 1);
-    // ShellCommand c2("sleep", {"10"}, true, 1235, 1);
-    // JobManager jm;
-
-    // int jobId = jm.addJob(c1, c1.pid, 0, true);
-    // jm.addJob(c2, c2.pid, 0, true);
-    // printf("%s", jm.printJobsList().c_str());
-    // printf("\n");
-    // jm.removeJobByPid(c1.pid);
-    // printf("%s", jm.printJobsList().c_str());
-    // ShellCommand c3("echo", {"Hello, World!"}, false, 1236, 1);
-    // jm.addJob(c3, c3.pid, 3, false);
-    // printf("\n");
-    // printf("%s", jm.printJobsList().c_str());
-    ShellCommand otherbash = ShellCommand("bash", {}, true, 22461, 0);
+    ShellCommand c1("ls", {"-l"}, false, 1234, 1);
+    ShellCommand c2("sleep", {"10"}, true, 1235, 1);
     JobManager jm;
-    jm.addJob(otherbash, otherbash.pid, 2, true);
+
+    int jobId = jm.addJob(c1, c1.pid, 0, true);
+    jm.addJob(c2, c2.pid, 0, true);
+    printf("%s", jm.printJobsList().c_str());
+    printf("\n");
+    jm.removeJobByPid(c1.pid);
+    printf("%s", jm.printJobsList().c_str());
+    ShellCommand c3("echo", {"Hello, World!"}, false, 1236, 1);
+    jm.addJob(c3, c3.pid, 3, false);
+    printf("\n");
+    printf("%s", jm.printJobsList().c_str());
+    //ShellCommand otherbash = ShellCommand("bash", {}, true, 22461, 0);
+    // JobManager jm;
+    //jm.addJob(otherbash, otherbash.pid, 2, true);
     // ShellCommand stopcmd("kill", {"19","1"}, false, 123, 2);
     // kill(stopcmd, jm);
     // sleep(10);
-    ShellCommand fgcmd("fg", {}, false, 123, 0);
-    fg(fgcmd, jm);
+    // ShellCommand fgcmd("fg", {}, false, 123, 0);
+    // fg(fgcmd, jm);
 	return 0;
 }
