@@ -70,30 +70,15 @@ int main(int argc, char* argv[]){
     ShellCommand c2("sleep", {"10"}, true, 1235, 1);
     JobManager jm;
 
-    int jobId = jm.addJob(c1, c1.pid, 0);
-    jm.addJob(c2, c2.pid, 0);
+    int jobId = jm.addJob(c1, c1.pid, 0, true);
+    jm.addJob(c2, c2.pid, 0, true);
     printf("%s", jm.printJobsList().c_str());
     printf("\n");
     jm.removeJobByPid(c1.pid);
     printf("%s", jm.printJobsList().c_str());
-    ShellCommand c3("echo &", {"Hello, World!"}, false, 1236, 1);
-    jm.addJob(c3, c3.pid, 3);
+    ShellCommand c3("echo", {"Hello, World!"}, false, 1236, 1);
+    jm.addJob(c3, c3.pid, 3, false);
     printf("\n");
     printf("%s", jm.printJobsList().c_str());
-
-    // // checking pwd
-    // ShellCommand c1("pwd", {}, false, 0, 0);
-
-    // // checking get pid
-    // ShellCommand c3("showpid", {}, false, 0, 0);
-   
-
-    // // checking cd
-    // ShellCommand c5("cd", {"-"}, false, 0, 1);
-    // ShellCommand c6("cd", {".."}, false, 0, 1);
-    // ShellCommand c7("cd", {"../.ssh/id_ed25519.pub"}, false, 0, 1);
-    // pwd(c1);
-    // cd(c7);
-    // pwd(c1);
 	return 0;
 }

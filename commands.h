@@ -86,6 +86,9 @@ class JobManager{
 		std::string printJobsList();
 		Job* getJobById(int jobId);
 		bool isEmpty();
+		int size();
+		int getLastJobId();
+		int killJobById(int jobId);
 };
 
 
@@ -102,5 +105,8 @@ void cd(ShellCommand& cmd);
 void jobs(ShellCommand& cmd, JobManager& jm);
 void kill(ShellCommand& cmd, JobManager& jm);
 void fg(ShellCommand& cmd, JobManager& jm);
+void bg(ShellCommand& cmd, JobManager& jm);
+void quit(ShellCommand& cmd, JobManager& jm);
+void diff(ShellCommand& cmd);
 
 #endif //COMMANDS_H

@@ -93,6 +93,52 @@ bool JobManager::isEmpty(){
 	return jobsList.empty();
 }
 
+int JobManager::size(){
+	return jobsList.size();
+}
+
+int JobManager::getLastJobId(){
+	if(jobsList.empty()){
+		return 0;
+	}
+	return jobsList.back().jobId;
+}
+
+int JobManager::killJobById(int jobId){
+	Job* job = getJobById(jobId);
+	if(job == nullptr){
+		return -1; // not found
+	}
+	std::stringstream out;
+	out <<"[" << job->jobId << "] "
+	<< job->cmd.command;
+	if(job->isBackground){ out << " &"; }
+	out << " - " << "sending SIGTERM... ";
+
+	//SIGTERM = 15
+	my_system_call(SYS_KILL, job->pid, 15);
+	pid_t result;
+	int status = 0;
+	  for (int i = 0; i < 50; i++) {
+        result = my_system_call(SYS_WAITPID ,job->pid, &status, WNOHANG);
+        if (result == job->pid) {
+            // child exited during wait
+			out << "done\n";
+            removeJobByPid(job->pid);
+			printf("%s", out.str().c_str());
+            return 0;
+        }
+        usleep(100 * 1000);  // 100ms
+    }
+
+	// sending SIGKILL
+	out << "sending SIGKILL... ";
+	my_system_call(SYS_KILL, job->pid, 9); // SIGKILL = 9
+	my_system_call(SYS_WAITPID ,job->pid, &status, 0);
+	out << "done\n";
+	printf("%s", out.str().c_str());
+	return 0; // success
+}
 // showpid
 void showpid(ShellCommand& cmd)
 {
@@ -243,7 +289,7 @@ void fg(ShellCommand& cmd, JobManager& jm){
 		perrorSmash("fg", "jobs list is empty");
 		return;
 	}
-	int jobId = cmd.nargs == 0? jm.generateJobId() - 1 : std::stoi(cmd.args[0]);
+	int jobId = cmd.nargs == 0? jm.getLastJobId() : std::stoi(cmd.args[0]);
 	Job* job = jm.getJobById(jobId);
 	if(job == nullptr){
 		std::string err = "job id " + cmd.args[0] +  " does not exist";
@@ -270,6 +316,55 @@ void fg(ShellCommand& cmd, JobManager& jm){
 	my_system_call(SYS_WAITPID, job->pid, &status, WUNTRACED);
 }
 
+void bg(ShellCommand& cmd, JobManager& jm){
+	if(cmd.nargs > 1){
+		perrorSmash("bg", "invalid arguments");
+		return;
+	}
+	int jobId = cmd.nargs == 0? jm.getLastJobId() : std::stoi(cmd.args[0]);
+	Job* job = jm.getJobById(jobId);
+	if(job == nullptr){
+		std::string err = "job id " + cmd.args[0] +  " does not exist";
+		perrorSmash("bg", err.c_str());
+		return;
+	}
+
+	// check if stopped  
+	if(job->status != 3){
+		std::string err = "job id " + cmd.args[0] +  " is already in background";
+		perrorSmash("bg", err.c_str());
+		return;
+	}
+	std::stringstream out;
+	out <<"[" << job->jobId << "] "
+	<< job->cmd.command;
+	if(job->isBackground){ out << " &"; }
+	out << " : "
+	<< job->pid << std::endl;
+
+	// SIGCONT = 18
+	my_system_call(SYS_KILL, job->pid, 18);
+	job->status = 2; // running
+}
+
+void quit(ShellCommand& cmd, JobManager& jm){
+	if(cmd.nargs > 1){
+		perrorSmash("quit", "expected 0 or 1 arguments");
+		return;
+	}
+	if(cmd.nargs == 1 && cmd.args[0] != "kill"){
+		perrorSmash("quit", "unexpected arguments");
+		return;
+	}
+	for (int i=0; i<jm.size(); i++){
+		Job* job = jm.getJobById(i+1);
+		if(job != nullptr){
+			continue;
+		}
+		jm.killJobById(job->jobId);
+	}
+	exit(0);
+}
 
 
 
@@ -282,36 +377,67 @@ void perrorSmash(const char* cmd, const char* msg)
         msg);
 }
 
-//example function for parsing commands
-// int parseCmdExample(char* line)
-// {
-// 	char* delimiters = " \t\n"; //parsing should be done by spaces, tabs or newlines
-// 	char* cmd = strtok(line, delimiters); //read strtok documentation - parses string by delimiters
-// 	if(!cmd)
-// 		return INVALID_COMMAND; //this means no tokens were found, most like since command is invalid
-	
-// 	char* args[MAX_ARGS];
-// 	int nargs = 0;
-// 	args[0] = cmd; //first token before spaces/tabs/newlines should be command name
-// 	for(int i = 1; i < MAX_ARGS; i++)
-// 	{
-// 		args[i] = strtok(NULL, delimiters); //first arg NULL -> keep tokenizing from previous call
-// 		if(!args[i])
-// 			break;
-// 		nargs++;
-// 	}
-// 	/*
-// 	At this point cmd contains the command string and the args array contains
-// 	the arguments. You can return them via struct/class, for example in C:
-// 		typedef struct {
-// 			char* cmd;
-// 			char* args[MAX_ARGS];
-// 		} Command;
-// 	Or maybe something more like this:
-// 		typedef struct {
-// 			bool bg;
-// 			char** args;
-// 			int nargs;
-// 		} CmdArgs;
-// 	*/
-// }
+void diff(ShellCommand* cmd){
+	if(cmd->nargs != 2){
+		perrorSmash("diff", "expected 2 arguments");
+		return;
+	}
+	std::string file1 = cmd->args[0];
+	std::string file2 = cmd->args[1];
+
+	if ((!isDirectory(file1)  && !isRegularFile(file1)) || (!isDirectory(file2) && !isRegularFile(file2))){
+		perrorSmash("diff", "expected valid paths for files");
+		return;
+	}
+
+	if(isDirectory(file1) || isDirectory(file2)){
+		perrorSmash("diff", "paths are not files");
+		return;
+	}	
+	int f1 = (int)my_system_call(SYS_OPEN ,file1.c_str(), "r");
+	 if (f1 < 0) {
+        return;
+    }
+	int f2 = (int)my_system_call(SYS_OPEN ,file2.c_str(), "r");
+	if(f2 < 0){
+		return;
+	}
+	const int BUF_SIZE = 4096;
+    char buf1[BUF_SIZE];
+    char buf2[BUF_SIZE];
+
+	while(1){
+		ssize_t r1 = my_system_call(SYS_READ, f1, buf1, BUF_SIZE);
+		ssize_t r2 = my_system_call(SYS_READ, f2, buf2, BUF_SIZE);
+
+        if (r1 < 0 || r2 < 0) {
+            close(f1);
+            close(f2);
+            return;
+        }
+
+        if (r1 != r2) {
+            close(f1);
+            close(f2);
+            return;
+        }
+
+        if (r1 == 0 && r2 == 0) {
+            break;
+        }
+
+        // Compare buffers
+        for (int i = 0; i < r1; ++i) {
+            if (buf1[i] != buf2[i]) {
+				printf("1\n");
+                close(f1);
+                close(f2);
+                return;
+            }
+        }
+    }
+
+    close(f1);
+    close(f2);
+	printf("0\n");
+}
