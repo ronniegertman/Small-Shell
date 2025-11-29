@@ -1,6 +1,7 @@
 //commands.c
 #include "commands.h"
 #include <unistd.h>
+#include <fcntl.h>
 #include <string.h>
 #include "my_system_call.h"
 #include <vector>
@@ -377,13 +378,20 @@ void perrorSmash(const char* cmd, const char* msg)
         msg);
 }
 
-void diff(ShellCommand* cmd){
-	if(cmd->nargs != 2){
+void diff(ShellCommand& cmd){
+	int f1=-1, f2=-1;
+	const int BUF_SIZE = 4096;
+    char buf1[BUF_SIZE];
+    char buf2[BUF_SIZE];
+	ssize_t r1, r2;
+	std::string file1, file2;
+
+	if(cmd.nargs != 2){
 		perrorSmash("diff", "expected 2 arguments");
 		return;
 	}
-	std::string file1 = cmd->args[0];
-	std::string file2 = cmd->args[1];
+	file1 = cmd.args[0];
+	file2 = cmd.args[1];
 
 	if ((!isDirectory(file1)  && !isRegularFile(file1)) || (!isDirectory(file2) && !isRegularFile(file2))){
 		perrorSmash("diff", "expected valid paths for files");
@@ -394,50 +402,44 @@ void diff(ShellCommand* cmd){
 		perrorSmash("diff", "paths are not files");
 		return;
 	}	
-	int f1 = (int)my_system_call(SYS_OPEN ,file1.c_str(), "r");
-	 if (f1 < 0) {
-        return;
-    }
-	int f2 = (int)my_system_call(SYS_OPEN ,file2.c_str(), "r");
-	if(f2 < 0){
-		return;
+	f1 = (int)my_system_call(SYS_OPEN ,file1.c_str(), O_RDONLY);
+	if (f1 < 0) { 
+		printf("f1\n");
+		goto l_cleanup; 
 	}
-	const int BUF_SIZE = 4096;
-    char buf1[BUF_SIZE];
-    char buf2[BUF_SIZE];
+	f2 = (int)my_system_call(SYS_OPEN ,file2.c_str(), O_RDONLY);
+	if(f2 < 0){
+		printf("f2\n");
+		goto l_cleanup; 
+	}
 
 	while(1){
-		ssize_t r1 = my_system_call(SYS_READ, f1, buf1, BUF_SIZE);
-		ssize_t r2 = my_system_call(SYS_READ, f2, buf2, BUF_SIZE);
+		r1 = my_system_call(SYS_READ, f1, buf1, BUF_SIZE);
+		r2 = my_system_call(SYS_READ, f2, buf2, BUF_SIZE);
 
         if (r1 < 0 || r2 < 0) {
-            close(f1);
-            close(f2);
-            return;
+            goto l_cleanup;
         }
 
         if (r1 != r2) {
-            close(f1);
-            close(f2);
-            return;
+			printf("1\n");
+            goto l_cleanup;
         }
 
         if (r1 == 0 && r2 == 0) {
             break;
         }
 
-        // Compare buffers
         for (int i = 0; i < r1; ++i) {
             if (buf1[i] != buf2[i]) {
 				printf("1\n");
-                close(f1);
-                close(f2);
-                return;
+                goto l_cleanup;
             }
         }
     }
-
-    close(f1);
-    close(f2);
 	printf("0\n");
+
+l_cleanup:
+	if (f1 >= 0) my_system_call(SYS_CLOSE, f1);
+	if (f2 >= 0) my_system_call(SYS_CLOSE, f2);
 }
