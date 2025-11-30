@@ -7,8 +7,8 @@
 #include <ctime>
 
 // Job class functions
-Job::Job(const ShellCommand& command, int jobId, int p, int stat, bool isBg)
-	: jobId(jobId), cmd(command), pid(p), status(stat), startTime(std::time(nullptr)), isBackground(isBg) {}
+Job::Job(const ShellCommand& command, int jobId, int p, int stat)
+	: jobId(jobId), cmd(command), pid(p), status(stat), startTime(std::time(nullptr)) {}
 
 double Job::getElapsedTime() const {
 	return difftime(std::time(nullptr), this->startTime);
@@ -24,9 +24,9 @@ int JobManager::generateJobId() {
     return jobsList.size() + 1;
 }
 
-int JobManager::addJob(const ShellCommand& cmd, int pid, int status, bool isBg) {
+int JobManager::addJob(const ShellCommand& cmd, int pid, int status) {
 	// enter new job sorted by jobId
-	Job newJob(cmd, this->generateJobId(), pid, status, isBg);
+	Job newJob(cmd, this->generateJobId(), pid, status);
 	auto it = jobsList.begin();
 	while(it != jobsList.end() && it->jobId < newJob.jobId) {
 		it++;
@@ -59,13 +59,17 @@ std::string JobManager::printJobsList() {
     std::stringstream out;
     for (const auto& job : jobsList) {
         out << "[" << job.jobId << "] "
-            << job.cmd.command;
-		if(job.isBackground){
+            << job.cmd.command << " ";
+		// print all the arguments
+		for(const auto argument: job.cmd.args){
+			out << argument;
+		}
+		if(job.cmd.isBackground){
 			out << " &";
 		}
 		out << ": "
 		<< job.pid << " "
-		<< "status=" << job.status << " "
+
 		<< job.getElapsedTime() << " secs ";
 		if (job.status == 3){
 			out << "(stopped)";
@@ -106,8 +110,11 @@ int JobManager::killJobById(int jobId){
 	}
 	std::stringstream out;
 	out <<"[" << job->jobId << "] "
-	<< job->cmd.command;
-	if(job->isBackground){ out << " &"; }
+	<< job->cmd.command << " ";
+	for(const auto argument: job->cmd.args){
+			out << argument;
+	}
+	if(job->cmd.isBackground){ out << " &"; }
 	out << " - " << "sending SIGTERM... ";
 
 	//SIGTERM = 15
@@ -135,4 +142,20 @@ int JobManager::killJobById(int jobId){
 	out << "done\n";
 	printf("%s", out.str().c_str());
 	return 0; // success
+}
+
+void JobManager::updateList(){
+	// check each job if it is done
+	std::vector<int> pidsToRemove;
+	for(const auto& job : jobsList) {
+		pid_t result = my_system_call(SYS_WAITPID ,job.pid, nullptr, WNOHANG);
+		if (result == job.pid) {
+			// job is done
+			pidsToRemove.push_back(job.pid);
+		}
+	}
+	// remove done jobs
+	for(const auto pid : pidsToRemove){
+		JobManager::removeJobById(pid);
+	}
 }

@@ -12,11 +12,11 @@
 #include <sys/stat.h>
 
 // showpid
-void showpid(ShellCommand& cmd)
+pid_t showpid(ShellCommand& cmd)
 {
 	if(cmd.nargs != 0) {
 		perrorSmash("showpid", "expected 0 arguments");
-		return;
+		return -1;
 	}
 
 	pid_t pid;
@@ -27,6 +27,7 @@ void showpid(ShellCommand& cmd)
 	}
 
 	printf("smash pid is %d\n",pid);
+	return pid;
 }
 
 //pwd
@@ -123,7 +124,7 @@ void kill(ShellCommand& cmd, JobManager& jm){
 		perrorSmash("kill", err.c_str());
 	}
 
-	// send the signal 
+	// send the signal
 	int res = my_system_call(SYS_KILL, job->pid, sigNum);
 	if(res == -1){
 		perrorSmash("kill", "invalid arguments");
@@ -142,15 +143,19 @@ void fg(ShellCommand& cmd, JobManager& jm){
 	int jobId = cmd.nargs == 0? jm.getLastJobId() : std::stoi(cmd.args[0]);
 	Job* job = jm.getJobById(jobId);
 	if(job == nullptr){
-		std::string err = "job id " + cmd.args[0] +  " does not exist";
-		perrorSmash("fg", err.c_str());
+		std::stringstream err;
+		err << "job id " << jobId << " does not exist";
+		perrorSmash("bg", err.str().c_str());;
 		return;
 	}
 
 	std::stringstream out;
 	out <<"[" << job->jobId << "] "
-	<< job->cmd.command;
-	if(job->isBackground){ out << " &"; }
+	<< job->cmd.command << " ";
+	for(const auto argument: job->cmd.args){
+			out << argument;
+	}
+	if(job->cmd.isBackground){ out << " &"; }
 	out << " : "
 	<< job->pid << std::endl;
 
@@ -174,26 +179,37 @@ void bg(ShellCommand& cmd, JobManager& jm){
 	int jobId = cmd.nargs == 0? jm.getLastJobId() : std::stoi(cmd.args[0]);
 	Job* job = jm.getJobById(jobId);
 	if(job == nullptr){
-		std::string err = "job id " + cmd.args[0] +  " does not exist";
-		perrorSmash("bg", err.c_str());
+		std::stringstream err;
+		err << "job id " << jobId << " does not exist";
+		perrorSmash("bg", err.str().c_str());
 		return;
 	}
 
 	// check if stopped  
 	if(job->status != 3){
-		std::string err = "job id " + cmd.args[0] +  " is already in background";
-		perrorSmash("bg", err.c_str());
+		std::stringstream err;
+		err << "job id " << jobId << " is already in background";
+		perrorSmash("bg", err.str().c_str());
 		return;
 	}
+	printf("befoer out\n");
 	std::stringstream out;
 	out <<"[" << job->jobId << "] "
-	<< job->cmd.command;
-	if(job->isBackground){ out << " &"; }
+	<< job->cmd.command << " ";
+	printf("before loop\n");
+	for(const auto argument: job->cmd.args){
+			out << argument;
+	}
+	printf("before if is background\n");
+	if(job->cmd.isBackground){ out << " &"; }
+	printf("before out\n");
 	out << " : "
 	<< job->pid << std::endl;
 
 	// SIGCONT = 18
+	printf("before syscall 18\n");
 	my_system_call(SYS_KILL, job->pid, 18);
+	printf("after syscall 18\n");
 	job->status = 2; // running
 }
 

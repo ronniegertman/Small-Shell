@@ -13,8 +13,7 @@ class Job {
 		int pid;
 		time_t startTime;
 		// REMOVE BACKGROUND IT IS IN SHELL COMMAND
-		bool isBackground;
-		Job(const ShellCommand& command, int jobId, int pid, int status, bool isBg);
+		Job(const ShellCommand& command, int jobId, int pid, int status);
 		double getElapsedTime() const;
 };
 
@@ -22,7 +21,7 @@ class JobManager{
 	std::vector<Job> jobsList;
 	public:
 		int generateJobId(); // job vector will be sorted
-		int addJob(const ShellCommand& cmd, int pid, int status, bool isBg);
+		int addJob(const ShellCommand& cmd, int pid, int status);
 		int removeJobById(int jobId);
 		int removeJobByPid(int pid);
 		std::string printJobsList();

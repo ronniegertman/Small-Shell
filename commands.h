@@ -60,7 +60,7 @@ typedef enum {
 =============================================================================*/
 int parseCommandExample(char* line);
 void perrorSmash(const char* cmd, const char* msg);
-void showpid(ShellCommand& cmd);
+pid_t showpid(ShellCommand& cmd);
 void pwd(ShellCommand& cmd);
 bool isRegularFile(const std::string& path);
 bool isDirectory(const std::string& path);
@@ -73,3 +73,6 @@ void quit(ShellCommand& cmd, JobManager& jm);
 void diff(ShellCommand& cmd);
 
 #endif //COMMANDS_H
+
+// TODO: no need to change status in jobs list if not by calling cntrl z or cntrl c
+// waitpid works only on child processes
