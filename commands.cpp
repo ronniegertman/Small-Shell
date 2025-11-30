@@ -21,16 +21,7 @@ void showpid(ShellCommand& cmd)
 
 	pid_t pid;
 	if(cmd.isBackground) {
-		pid_t fork_pid = fork();
-		if(fork_pid == 0) {
-			//child 
-			pid = getppid();
-			exit(0);
-		}
-		else {
-			//parent
-			my_system_call(SYS_WAITPID, fork_pid, NULL, 0);
-		}
+		pid = getppid();
 	}else {
 		pid = getpid();
 	}
@@ -45,21 +36,7 @@ void pwd(ShellCommand& cmd){
 		return;
 	}
 	char cwd[CMD_LENGTH_MAX]; //current working directory
-	if(cmd.isBackground){
-		pid_t fork_pid = fork();
-		if(fork_pid == 0) {
-			//child 
-			getcwd(cwd, sizeof(cwd));
-			exit(0);
-		}
-		else {
-			//parent
-			my_system_call(SYS_WAITPID, fork_pid, NULL, 0);
-		}
-
-	} else {
-		getcwd(cwd, sizeof(cwd));
-	}
+	getcwd(cwd, sizeof(cwd));
 	printf("%s\n", cwd);
 	
 }
@@ -122,6 +99,7 @@ void cd(ShellCommand& cmd){
 }
 
 //jobs
+// PRINT SRGUMENTS LIST
 void jobs(ShellCommand& cmd, JobManager& jm){
 	if(cmd.nargs !=0){
 		perrorSmash("jobs", "expected 0 arguments");
@@ -184,7 +162,7 @@ void fg(ShellCommand& cmd, JobManager& jm){
 
 	// bring job to foreground
 	jm.removeJobById(jobId);
-	int status = job->status;
+	int status = 0;
 	my_system_call(SYS_WAITPID, job->pid, &status, WUNTRACED);
 }
 

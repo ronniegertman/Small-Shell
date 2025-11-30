@@ -12,6 +12,7 @@ class Job {
 		ShellCommand cmd;
 		int pid;
 		time_t startTime;
+		// REMOVE BACKGROUND IT IS IN SHELL COMMAND
 		bool isBackground;
 		Job(const ShellCommand& command, int jobId, int pid, int status, bool isBg);
 		double getElapsedTime() const;
@@ -30,6 +31,7 @@ class JobManager{
 		int size();
 		int getLastJobId();
 		int killJobById(int jobId);
+		void updateList();
 };
 /*=============================================================================*/
 #endif //JOBS_H

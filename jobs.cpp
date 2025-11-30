@@ -130,6 +130,8 @@ int JobManager::killJobById(int jobId){
 	out << "sending SIGKILL... ";
 	my_system_call(SYS_KILL, job->pid, 9); // SIGKILL = 9
 	my_system_call(SYS_WAITPID ,job->pid, &status, 0);
+	removeJobByPid(job->pid);
+
 	out << "done\n";
 	printf("%s", out.str().c_str());
 	return 0; // success
