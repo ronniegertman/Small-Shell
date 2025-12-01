@@ -9,5 +9,6 @@
 /*=============================================================================
 * global functions
 =============================================================================*/
-void handleSigint(JobManager& jm);
+void handleSigStp(JobManager& jm);
+void handleSigInt(JobManager& jm);
 #endif //__SIGNALS_H__

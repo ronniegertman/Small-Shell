@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include "my_system_call.h"
 
-void handleSigint(JobManager& jm) {
+void handleSigStp(JobManager& jm) {
     // check if this is the shell process
     printf("smash: caught CTRL+Z\n");
     ShellCommand cmd = ShellCommand("smash", {}, false, 123, 0);
@@ -13,6 +13,7 @@ void handleSigint(JobManager& jm) {
     if(pid == showpid(cmd)){
         return;
     }
+    // what should i add?
     jm.addJob(cmd, pid, 3);
     // SIGSTOP = 19
     if(my_system_call(SYS_KILL, pid, 19) == -1) {
