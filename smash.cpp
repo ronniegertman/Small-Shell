@@ -5,6 +5,7 @@
 =============================================================================*/
 #include <stdlib.h>
 #include "commands.h"
+#include "shellprompt.h"
 #include "my_system_call.h"
 #include "signals.h"
 #include <string>
@@ -26,22 +27,12 @@
 /*=============================================================================
 * classes/structs declarations
 =============================================================================*/
-class ShellPrompt{
-	public:
-		ShellCommand shellcmd;
-		//bool isInnercmd;
-		//int Innercmd; // i think now that we won't use this because
-		// it will require 2 switch cases, 1 to save value
-		// and 1 to call function
-		bool isPromptDone;
-		std::stringstream* leftover;
 
-};
 /*=============================================================================
 * global variables & data structures
 =============================================================================*/
 char _line[CMD_LENGTH_MAX];
-
+JobManager jm;
 /*=============================================================================
 * main function
 =============================================================================*/
@@ -66,6 +57,7 @@ void parse_prompt(ShellPrompt &prompt) {
 		}
 		else{
 			prompt.shellcmd.args.push_back(word);
+			prompt.shellcmd.nargs++;
 		}
     }
 	//prompt is done if reached here
@@ -77,14 +69,14 @@ int inner_index(std::string &cmd){
 	const char* innerCommands[9] = {"showpid","pwd","cd",
 		"jobs","fg","bg","kill","quit","diff"};
 	for(int i=1;i<10;i++){
-		if(cmd == innerCommands[i]){
-			return true;
+		if(cmd == innerCommands[i-1]){
+			return i;
 		}
 	}
 	return 0;
 }
 
-int call_inner(ShellCommand &cmd, int innercmd){
+void call_inner(ShellCommand &cmd, int innercmd){
 	switch(innercmd){
 		case(SHOWPID):
 			return showpid(cmd);
@@ -93,28 +85,42 @@ int call_inner(ShellCommand &cmd, int innercmd){
 		case(CD):
 			return cd(cmd);
 		case(JOBS):
-			return jobs(cmd);
+			return jobs(cmd,jm);
 		case(KILL):
-			return kill(cmd);
+			return kill(cmd,jm);
 		case(FG):
-			return fg(cmd);
+			return fg(cmd,jm);
 		case(BG):
-			return bg(cmd);	
+			return bg(cmd,jm);	
 		case(QUIT):
-			return quit(cmd);
+			return quit(cmd,jm);
 		case(DIFF):
 			return diff(cmd);
 	}
 }
 
-void args_vector_to_array(ShellCommand &cmd, char *argv){
+void args_vector_to_array(ShellCommand &cmd, char **argv) {
+    // 1. argv[0] must be the command name itself
+    // We use const_cast because c_str() returns 'const char*' 
+    // but the execvp signature (and your array) expects 'char*'
+    argv[0] = const_cast<char*>(cmd.command.c_str());
 
+    // 2. Copy the arguments from the vector to the array starting at index 1
+    for (size_t i = 0; i < cmd.args.size(); ++i) {
+        argv[i + 1] = const_cast<char*>(cmd.args[i].c_str());
+    }
+
+    // 3. The array MUST be terminated by a NULL pointer for execvp to know where to stop
+    argv[cmd.nargs + 1] = NULL;
 }
 
 //void just for now
 void exe_command(ShellCommand &cmd){
-	int pid;
-	char* argv[MAX_ARGS];
+	pid_t pid;
+	int status;
+	char* argv[MAX_ARGS + 2]; // +2 for command itself 
+	//and null terminator
+	
 	//returns index of inner command if inner
 	//0 if outer
 	int innercmdIndex = inner_index(cmd.command); 
@@ -125,24 +131,31 @@ void exe_command(ShellCommand &cmd){
 		else{
 			pid = my_system_call(SYS_FORK);
 			if(pid == 0){
+				// child
 				call_inner(cmd,innercmdIndex);
 			}
 			else if(pid > 0){
-				addJob(cmd,pid);
+				jm.addJob(cmd,pid,2,cmd.isBackground);
 			}
 		}
 	}
 	else if(innercmdIndex == 0){
 		pid = my_system_call(SYS_FORK);
 		if(pid == 0){
+			//child
 			args_vector_to_array(cmd,argv);
-			my_system_call(SYS_EXECVP,cmd.command.c_str(),argv)
+			my_system_call(SYS_EXECVP,cmd.command.c_str(),argv);
 		}
 		else if(pid > 0){
-			if(cmd.isBackground == true)
-			//finish it
+			if(cmd.isBackground == true){
+				jm.addJob(cmd,pid,2,cmd.isBackground);
+			}
+			else{
+				my_system_call(SYS_WAITPID,pid,&status);
+			}
 		}
 	}
+	return;
 }
 
 
@@ -156,7 +169,7 @@ int main(int argc, char* argv[])
 		printf("smash > ");
 		fgets(_line, CMD_LENGTH_MAX, stdin);
 		strcpy(_cmd, _line);
-		shellPrompt.leftover << _cmd; //put prompt in ss
+		shellPrompt.leftover  << _cmd; //put prompt in ss
 		shellPrompt.isPromptDone = false;
 		//inner loop to handle &&
 		while(shellPrompt.isPromptDone == false){
@@ -164,6 +177,7 @@ int main(int argc, char* argv[])
 			exe_command(shellPrompt.shellcmd);
 			shellPrompt.shellcmd.args.clear(); //maybe will do it in exe_cmd
 			// but just so i wont forget
+			shellPrompt.shellcmd.nargs = 0;
 		}
 		//initialize buffers for next command
 		_line[0] = '\0';
