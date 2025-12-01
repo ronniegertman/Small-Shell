@@ -7,13 +7,13 @@
 /*=============================================================================*/
 class Job {
 	public:
-		int jobId;
+		unsigned int jobId;
 		int status;
 		ShellCommand cmd;
-		int pid;
+		pid_t pid;
 		time_t startTime;
 		// REMOVE BACKGROUND IT IS IN SHELL COMMAND
-		Job(const ShellCommand& command, int jobId, int pid, int status);
+		Job(const ShellCommand& command, unsigned int jobId, pid_t pid, int status);
 		double getElapsedTime() const;
 };
 
@@ -25,10 +25,10 @@ class JobManager{
 		JobManager();
 		int generateJobId(); // job vector will be sorted
 		int addJob(const ShellCommand& cmd, int pid, int status);
-		int removeJobById(int jobId);
-		int removeJobByPid(int pid);
+		int removeJobById(unsigned int jobId);
+		int removeJobByPid(pid_t pid);
 		std::string printJobsList();
-		Job* getJobById(int jobId);
+		Job* getJobById(unsigned int jobId);
 		bool isEmpty();
 		int size();
 		int getLastJobId();

@@ -7,19 +7,23 @@
 #include <ctime>
 
 // Job class functions
-Job::Job(const ShellCommand& command, int jobId, int p, int stat)
-	: jobId(jobId), cmd(command), pid(p), status(stat), startTime(std::time(nullptr)) {}
+Job::Job(const ShellCommand& command, unsigned int jobId, pid_t pid, int stat) :
+	jobId(jobId),
+	status(stat),
+	cmd(command),
+	pid(pid),
+	startTime(std::time(nullptr)) {}
 
 double Job::getElapsedTime() const {
 	return difftime(std::time(nullptr), this->startTime);
 }
 
 // initializing jm with "empty" foreground command
-JobManager::JobManager() : fgcmd("", {}, false, -1, 0), fgactive(false) {}
+JobManager::JobManager() : fgactive(false), fgcmd("", {}, false, 0, 0) {}
 
 // JobManager class functions
 int JobManager::generateJobId() {
-	for (int i = 0; i < jobsList.size(); i++) {
+	for (size_t i = 0; i < jobsList.size(); i++) {
         if (jobsList[i].jobId != i+1) {
             return i+1;
         }
@@ -39,7 +43,7 @@ int JobManager::addJob(const ShellCommand& cmd, int pid, int status) {
 	return newJob.jobId;
 }
 
-int JobManager::removeJobById(int jobId) {
+int JobManager::removeJobById(unsigned int jobId) {
 	for(auto it = jobsList.begin(); it != jobsList.end(); it++) {
 		if(it->jobId == jobId) {
 			jobsList.erase(it);
@@ -49,7 +53,7 @@ int JobManager::removeJobById(int jobId) {
 	return -1; // not found
 }
 
-int JobManager::removeJobByPid(int pid) {
+int JobManager::removeJobByPid(pid_t pid) {
 	for(auto it = jobsList.begin(); it != jobsList.end(); it++) {
 		if(it->pid == pid) {
 			jobsList.erase(it);
@@ -84,7 +88,7 @@ std::string JobManager::printJobsList() {
     return out.str();
 }
 
-Job* JobManager::getJobById(int jobId){
+Job* JobManager::getJobById(unsigned int jobId){
 	for(auto& job : jobsList) {
 		if(job.jobId == jobId) {
 			return &job;
