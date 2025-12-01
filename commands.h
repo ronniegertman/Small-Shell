@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include <string>
 #include <vector>
+#include "shellcommand.h"
+#include "jobs.h"
 
 
 #define CMD_LENGTH_MAX 120
@@ -53,26 +55,6 @@ typedef enum {
 	//feel free to add more values here or delete this
 } CommandResult;
 
-class ShellCommand {
-	public:
-		std::string command;
-		std::vector<std::string> args;
-		bool isBackground;
-		pid_t pid;
-		int nargs;
-};
-
-class Job {
-	public:
-		int jobId;
-		int status;
-		ShellCommand* cmd;
-		int pid;
-		int secondsElapsed;
-		
-};
-
-
 /*=============================================================================
 * global functions
 =============================================================================*/
@@ -80,6 +62,14 @@ int parseCommandExample(char* line);
 void perrorSmash(const char* cmd, const char* msg);
 void showpid(ShellCommand& cmd);
 void pwd(ShellCommand& cmd);
+bool isRegularFile(const std::string& path);
+bool isDirectory(const std::string& path);
 void cd(ShellCommand& cmd);
-int generateJobId();
+void jobs(ShellCommand& cmd, JobManager& jm);
+void kill(ShellCommand& cmd, JobManager& jm);
+void fg(ShellCommand& cmd, JobManager& jm);
+void bg(ShellCommand& cmd, JobManager& jm);
+void quit(ShellCommand& cmd, JobManager& jm);
+void diff(ShellCommand& cmd);
+
 #endif //COMMANDS_H
