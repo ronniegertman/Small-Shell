@@ -11,6 +11,7 @@
 #include <sstream>
 #include <string.h>
 #include <unistd.h>
+#include <csignal>
 
 /*=============================================================================
 * classes/structs declarations

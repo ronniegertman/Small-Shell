@@ -167,6 +167,7 @@ void fg(ShellCommand& cmd, JobManager& jm){
 
 	// bring job to foreground
 	jm.removeJobById(jobId);
+	jm.updateFgCmd(job->cmd);
 	int status = 0;
 	my_system_call(SYS_WAITPID, job->pid, &status, WUNTRACED);
 }

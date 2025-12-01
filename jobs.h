@@ -19,7 +19,10 @@ class Job {
 
 class JobManager{
 	std::vector<Job> jobsList;
+	bool fgactive = false;
 	public:
+		ShellCommand fgcmd; // foreground command
+		JobManager();
 		int generateJobId(); // job vector will be sorted
 		int addJob(const ShellCommand& cmd, int pid, int status);
 		int removeJobById(int jobId);
@@ -31,6 +34,8 @@ class JobManager{
 		int getLastJobId();
 		int killJobById(int jobId);
 		void updateList();
+		void updateFgCmd(ShellCommand& cmd);
+		void clearFgCmd();
 };
 /*=============================================================================*/
 #endif //JOBS_H

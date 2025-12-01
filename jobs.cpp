@@ -14,6 +14,9 @@ double Job::getElapsedTime() const {
 	return difftime(std::time(nullptr), this->startTime);
 }
 
+// initializing jm with "empty" foreground command
+JobManager::JobManager() : fgcmd("", {}, false, -1, 0), fgactive(false) {}
+
 // JobManager class functions
 int JobManager::generateJobId() {
 	for (int i = 0; i < jobsList.size(); i++) {
@@ -26,6 +29,7 @@ int JobManager::generateJobId() {
 
 int JobManager::addJob(const ShellCommand& cmd, int pid, int status) {
 	// enter new job sorted by jobId
+	JobManager::updateList();
 	Job newJob(cmd, this->generateJobId(), pid, status);
 	auto it = jobsList.begin();
 	while(it != jobsList.end() && it->jobId < newJob.jobId) {
@@ -56,6 +60,7 @@ int JobManager::removeJobByPid(int pid) {
 }
 
 std::string JobManager::printJobsList() {
+	JobManager::updateList();
     std::stringstream out;
     for (const auto& job : jobsList) {
         out << "[" << job.jobId << "] "
@@ -158,4 +163,14 @@ void JobManager::updateList(){
 	for(const auto pid : pidsToRemove){
 		JobManager::removeJobById(pid);
 	}
+}
+
+void JobManager::updateFgCmd(ShellCommand& cmd){
+	this->fgactive = true;
+	fgcmd = cmd;
+}
+
+void JobManager::clearFgCmd(){
+	this->fgactive = false;
+	fgcmd = ShellCommand("", {}, false, -1, 0);
 }
