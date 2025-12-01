@@ -152,8 +152,8 @@ void fg(ShellCommand& cmd, JobManager& jm){
 	std::stringstream out;
 	out <<"[" << job->jobId << "] "
 	<< job->cmd.command << " ";
-	for(const auto argument: job->cmd.args){
-			out << argument;
+	for (const auto &argument: job->cmd.args){
+		out << argument;
 	}
 	if(job->cmd.isBackground){ out << " &"; }
 	out << " : "
@@ -198,7 +198,7 @@ void bg(ShellCommand& cmd, JobManager& jm){
 	out <<"[" << job->jobId << "] "
 	<< job->cmd.command << " ";
 	printf("before loop\n");
-	for(const auto argument: job->cmd.args){
+	for(const auto &argument: job->cmd.args){
 			out << argument;
 	}
 	printf("before if is background\n");

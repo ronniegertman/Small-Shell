@@ -70,7 +70,7 @@ std::string JobManager::printJobsList() {
         out << "[" << job.jobId << "] "
             << job.cmd.command << " ";
 		// print all the arguments
-		for(const auto argument: job.cmd.args){
+		for(const auto &argument: job.cmd.args){
 			out << argument;
 		}
 		if(job.cmd.isBackground){
@@ -120,7 +120,7 @@ int JobManager::killJobById(int jobId){
 	std::stringstream out;
 	out <<"[" << job->jobId << "] "
 	<< job->cmd.command << " ";
-	for(const auto argument: job->cmd.args){
+	for(const auto &argument: job->cmd.args){
 			out << argument;
 	}
 	if(job->cmd.isBackground){ out << " &"; }
