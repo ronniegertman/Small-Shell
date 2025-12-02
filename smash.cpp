@@ -12,6 +12,7 @@
 #include <vector>
 #include <sstream>
 #include <string.h>
+#include <unistd.h>
 
 #define SHOWPID     1
 #define PWD         2
@@ -134,8 +135,10 @@ void exe_command(ShellCommand &cmd){
 			pid = my_system_call(SYS_FORK);
 			if(pid == 0){
 				// child
+				setpgrp();
 				cmd.pid = getpid();
 				call_inner(cmd,innercmdIndex);
+				exit(0);
 			}
 			else if(pid > 0){
 				jm.addJob(cmd,pid,2);
@@ -146,9 +149,11 @@ void exe_command(ShellCommand &cmd){
 		pid = my_system_call(SYS_FORK);
 		if(pid == 0){
 			//child
+			setpgrp();
 			cmd.pid = getpid();
 			args_vector_to_array(cmd,argv);
 			my_system_call(SYS_EXECVP,cmd.command.c_str(),argv);
+			exit(0);
 		}
 		else if(pid > 0){
 			if(cmd.isBackground == true){
@@ -181,6 +186,8 @@ int main(int argc, char* argv[])
 		while(shellPrompt.isPromptDone == false){
 			parse_prompt(shellPrompt);
 			exe_command(shellPrompt.shellcmd);
+			shellPrompt.shellcmd.isBackground = false;
+			shellPrompt.shellcmd.command = "";
 			shellPrompt.shellcmd.args.clear();
 			shellPrompt.shellcmd.nargs = 0;
 		}

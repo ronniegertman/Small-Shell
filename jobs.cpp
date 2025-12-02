@@ -165,7 +165,7 @@ void JobManager::updateList(){
 	}
 	// remove done jobs
 	for(const auto pid : pidsToRemove){
-		JobManager::removeJobById(pid);
+		JobManager::removeJobByPid(pid);
 	}
 }
 
