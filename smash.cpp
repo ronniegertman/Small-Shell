@@ -7,11 +7,11 @@
 #include "commands.h"
 #include "shellprompt.h"
 #include "my_system_call.h"
-#include "signals.h"
 #include <string>
 #include <vector>
 #include <sstream>
 #include <string.h>
+#include <csignal>
 #include <unistd.h>
 
 #define SHOWPID     1
@@ -37,6 +37,44 @@ JobManager jm;
 /*=============================================================================
 * main function
 =============================================================================*/
+void handleSigStp() {
+	pid_t fgpid;
+
+    // check if this is the shell process
+    printf("smash: caught CTRL+Z\n");
+	if(jm.fgactive == false){  // no other process but the shell is in fg
+		return;
+	}
+	fgpid = jm.fgcmd.pid;
+    jm.addJob(jm.fgcmd, fgpid, 3);
+    // SIGSTOP = 19
+    if(my_system_call(SYS_KILL, fgpid, 19) == -1) {
+		jm.removeJobByPid(fgpid);
+        perror("smash error: kill failed");
+    }
+    jm.clearFgCmd();
+    printf("smash: process %d was stopped\n", fgpid);
+}
+
+
+void handleSigInt() {
+	pid_t fgpid;
+
+    // check if this is the shell process
+    printf("smash: caught CTRL+C\n");
+	if(jm.fgactive == false){  // no other process but the shell is in fg
+		return;
+	}
+	fgpid = jm.fgcmd.pid;
+    // SIGINT = 2
+    if(my_system_call(SYS_KILL, fgpid, 2) == -1) {
+        perror("smash error: kill failed");
+    }
+    jm.clearFgCmd();
+    printf("smash: process %d was killed\n", fgpid);
+}
+
+
 void parse_prompt(ShellPrompt &prompt) {
     std::vector<std::string> words;
     // Use an istringstream to handle the splitting
@@ -156,12 +194,13 @@ void exe_command(ShellCommand &cmd){
 			exit(0);
 		}
 		else if(pid > 0){
+			cmd.pid = pid;
 			if(cmd.isBackground == true){
 				jm.addJob(cmd,pid,2);
 			}
 			else{
 				jm.updateFgCmd(cmd);
-				my_system_call(SYS_WAITPID,pid,&status);
+				my_system_call(SYS_WAITPID,pid,&status,WUNTRACED);
 				jm.clearFgCmd();
 			}
 		}
@@ -174,6 +213,8 @@ void exe_command(ShellCommand &cmd){
 
 int main(int argc, char* argv[])
 {
+	signal(SIGINT, (__sighandler_t)handleSigInt);
+	signal(SIGTSTP, (__sighandler_t)handleSigStp);
 	char _cmd[CMD_LENGTH_MAX];
 	ShellPrompt shellPrompt; //object to handle each prompt
 	while(1) {

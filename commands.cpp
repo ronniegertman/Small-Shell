@@ -202,10 +202,11 @@ void fg(ShellCommand& cmd, JobManager& jm){
 
 	// bring job to foreground
 	pid_t pid = job->pid;
+	ShellCommand jobcmd = job->cmd;
 	jm.updateFgCmd(job->cmd);
 	jm.removeJobById(jobId);
 	int status = 0;
-	jm.updateFgCmd(cmd);
+	jm.updateFgCmd(jobcmd);
 	my_system_call(SYS_WAITPID, pid, &status, WUNTRACED);
 	jm.clearFgCmd();
 }

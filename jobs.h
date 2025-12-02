@@ -19,8 +19,8 @@ class Job {
 
 class JobManager{
 	std::vector<Job> jobsList;
-	bool fgactive = false;
 	public:
+		bool fgactive = false;
 		ShellCommand fgcmd; // foreground command
 		JobManager();
 		int generateJobId(); // job vector will be sorted

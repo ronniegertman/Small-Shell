@@ -6,36 +6,21 @@
 #include "my_system_call.h"
 
 // ctrl - z
-void handleSigStp(JobManager& jm) {
-    // check if this is the shell process
-    printf("smash: caught CTRL+Z\n");
-    ShellCommand shell = ShellCommand("smash", {}, false, 123, 0);
-    pid_t pid = getpid();
-    if(pid == showpid(shell)){
-        return;
-    }
-    jm.addJob(jm.fgcmd, pid, 3);
-    // SIGSTOP = 19
-    if(my_system_call(SYS_KILL, pid, 19) == -1) {
-        perror("smash error: kill failed");
-    }
-    jm.clearFgCmd();
-    printf("smash: process %d was stopped\n", pid);
-}
+// void handleSigStp(JobManager& jm) {
+//     // check if this is the shell process
+//     printf("smash: caught CTRL+Z\n");
+//     ShellCommand shell = ShellCommand("smash", {}, false, 123, 0);
+//     pid_t pid = getpid();
+//     if(pid == showpid(shell)){
+//         return;
+//     }
+//     jm.addJob(jm.fgcmd, pid, 3);
+//     // SIGSTOP = 19
+//     if(my_system_call(SYS_KILL, pid, 19) == -1) {
+//         perror("smash error: kill failed");
+//     }
+//     jm.clearFgCmd();
+//     printf("smash: process %d was stopped\n", pid);
+// }
 
 // ctrl - c
-void handleSigInt(JobManager& jm) {
-    // check if this is the shell process
-    printf("smash: caught CTRL+C\n");
-    ShellCommand shell = ShellCommand("smash", {}, false, 123, 0);
-    pid_t pid = getpid();
-    if(pid == showpid(shell)){
-        return;
-    }
-    // SIGINT = 2
-    if(my_system_call(SYS_KILL, pid, 2) == -1) {
-        perror("smash error: kill failed");
-    }
-    jm.clearFgCmd();
-    printf("smash: process %d was killed\n", pid);
-}
