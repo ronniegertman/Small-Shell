@@ -75,6 +75,7 @@ void cd(ShellCommand& cmd){
 			return;
 		}
 		targetDir = std::string(prev_dir);
+		printf("%s\n", targetDir.c_str());
 	} else if(cmd.args[0] == ".."){
 		targetDir = currentDir.substr(0, currentDir.find_last_of('/'));
 		if(targetDir.empty()) {
@@ -85,7 +86,8 @@ void cd(ShellCommand& cmd){
 	}	
 	// checking for valid directory
 	if(isRegularFile(targetDir)) {
-		perrorSmash("cd", "not a directory");
+		std::string err = targetDir + ": not a directory";
+		perrorSmash("cd", err.c_str());
 		return;
 	}
 	if(!isDirectory(targetDir)) {
@@ -109,12 +111,27 @@ void jobs(ShellCommand& cmd, JobManager& jm){
 	printf("%s", jm.printJobsList().c_str());
 }
 
+bool isUnsignedInt(const std::string& s) {
+    if (s.empty()) return false;
+
+    for (char c : s) {
+        if (!isdigit(c)) return false;
+    }
+
+    return true;
+}
+
 //kill
 void kill(ShellCommand& cmd, JobManager& jm){
 	if(cmd.nargs !=2){
 		perrorSmash("kill", "invalid arguments");
 		return;
 	}
+	if (!isUnsignedInt(cmd.args[0]) || !isUnsignedInt(cmd.args[1])){
+		perrorSmash("kill", "invalid arguments");
+		return;
+	}
+
 	int sigNum = std::stoi(cmd.args[0]);
 	int jobId = std::stoi(cmd.args[1]);
 
@@ -127,6 +144,7 @@ void kill(ShellCommand& cmd, JobManager& jm){
 	// send the signal
 	int res = my_system_call(SYS_KILL, job->pid, sigNum);
 	if(res == -1){
+		printf("error sending the signal\n");
 		perrorSmash("kill", "invalid arguments");
 	}
 }
@@ -140,12 +158,17 @@ void fg(ShellCommand& cmd, JobManager& jm){
 		perrorSmash("fg", "jobs list is empty");
 		return;
 	}
+	if (cmd.nargs == 1 && !isUnsignedInt(cmd.args[0])){
+		perrorSmash("kill", "invalid arguments");
+		return;
+	}
+
 	int jobId = cmd.nargs == 0? jm.getLastJobId() : std::stoi(cmd.args[0]);
 	Job* job = jm.getJobById(jobId);
 	if(job == nullptr){
 		std::stringstream err;
 		err << "job id " << jobId << " does not exist";
-		perrorSmash("bg", err.str().c_str());;
+		perrorSmash("fg", err.str().c_str());;
 		return;
 	}
 
@@ -166,15 +189,24 @@ void fg(ShellCommand& cmd, JobManager& jm){
 	}
 
 	// bring job to foreground
-	jm.removeJobById(jobId);
+	pid_t pid = job->pid;
 	jm.updateFgCmd(job->cmd);
+	jm.removeJobById(jobId);
 	int status = 0;
-	my_system_call(SYS_WAITPID, job->pid, &status, WUNTRACED);
+	my_system_call(SYS_WAITPID, pid, &status, WUNTRACED);
 }
 
 void bg(ShellCommand& cmd, JobManager& jm){
 	if(cmd.nargs > 1){
 		perrorSmash("bg", "invalid arguments");
+		return;
+	}
+	if(jm.isEmpty()){
+		perrorSmash("bg", "there are no stopped jobs to resume");
+		return;
+	}
+	if (cmd.nargs == 1 && !isUnsignedInt(cmd.args[0])){
+		perrorSmash("kill", "invalid arguments");
 		return;
 	}
 	int jobId = cmd.nargs == 0? jm.getLastJobId() : std::stoi(cmd.args[0]);
@@ -187,10 +219,15 @@ void bg(ShellCommand& cmd, JobManager& jm){
 	}
 
 	// check if stopped  
-	if(job->status != 3){
+	if(job->status != 3 && cmd.nargs == 1){
 		std::stringstream err;
 		err << "job id " << jobId << " is already in background";
 		perrorSmash("bg", err.str().c_str());
+		return;
+	}
+
+	if(job->status != 3){
+		perrorSmash("bg", "there are no stopped jobs to resume");
 		return;
 	}
 	printf("befoer out\n");
@@ -223,12 +260,14 @@ void quit(ShellCommand& cmd, JobManager& jm){
 		perrorSmash("quit", "unexpected arguments");
 		return;
 	}
-	for (int i=0; i<jm.size(); i++){
-		Job* job = jm.getJobById(i+1);
-		if(job != nullptr){
-			continue;
+	if(cmd.nargs == 1 && cmd.args[0] == "kill"){
+		for (int i=0; i<jm.size(); i++){
+			Job* job = jm.getJobById(i+1);
+			if(job == nullptr){
+				continue;
+			}
+			jm.killJobById(job->jobId);
 		}
-		jm.killJobById(job->jobId);
 	}
 	exit(0);
 }

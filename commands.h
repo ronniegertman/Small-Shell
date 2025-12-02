@@ -71,6 +71,7 @@ void fg(ShellCommand& cmd, JobManager& jm);
 void bg(ShellCommand& cmd, JobManager& jm);
 void quit(ShellCommand& cmd, JobManager& jm);
 void diff(ShellCommand& cmd);
+bool isUnsignedInt(const std::string& s);
 
 #endif //COMMANDS_H
 

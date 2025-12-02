@@ -12,7 +12,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <csignal>
-
+#include "signals.h"
 /*=============================================================================
 * classes/structs declarations
 =============================================================================*/
@@ -81,7 +81,7 @@ int main(int argc, char* argv[]){
     // jm.addJob(c3, c3.pid, 3);
     // printf("\n");
     // printf("%s", jm.printJobsList().c_str());
-    ShellCommand otherbash = ShellCommand("bash", {}, true, 19313, 0);
+    ShellCommand otherbash = ShellCommand("bash", {}, true, 84507, 0);
     JobManager jm;
     jm.addJob(otherbash, otherbash.pid, 2);
     ShellCommand killcmd("kill", {"9","1"}, false, 123, 2);
@@ -89,6 +89,7 @@ int main(int argc, char* argv[]){
     printf("\n");
     kill(killcmd, jm);
     sleep(2);
+    // waitpid only works for child processes
     jm.updateList();
     printf("%s", jm.printJobsList().c_str());
     // ShellCommand bgcmd("bg", {}, false, 123, 0);

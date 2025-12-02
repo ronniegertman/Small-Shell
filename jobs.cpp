@@ -24,8 +24,8 @@ JobManager::JobManager() : fgactive(false), fgcmd("", {}, false, 0, 0) {}
 // JobManager class functions
 int JobManager::generateJobId() {
 	for (size_t i = 0; i < jobsList.size(); i++) {
-        if (jobsList[i].jobId != i+1) {
-            return i+1;
+        if (jobsList[i].jobId != i) {
+            return i;
         }
     }
     return jobsList.size() + 1;
