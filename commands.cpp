@@ -208,7 +208,7 @@ void bg(ShellCommand& cmd, JobManager& jm){
 		return;
 	}
 	if (cmd.nargs == 1 && !isUnsignedInt(cmd.args[0])){
-		perrorSmash("kill", "invalid arguments");
+		perrorSmash("bg", "invalid arguments");
 		return;
 	}
 	int jobId = cmd.nargs == 0? jm.getLastJobId() : std::stoi(cmd.args[0]);

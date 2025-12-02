@@ -28,7 +28,7 @@ int JobManager::generateJobId() {
             return i;
         }
     }
-    return jobsList.size() + 1;
+    return jobsList.size();
 }
 
 int JobManager::addJob(const ShellCommand& cmd, int pid, int status) {

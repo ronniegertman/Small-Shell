@@ -68,7 +68,7 @@ void parse_prompt(ShellPrompt &prompt) {
 
 int inner_index(std::string &cmd){
 	const char* innerCommands[9] = {"showpid","pwd","cd",
-		"jobs","fg","bg","kill","quit","diff"};
+		"jobs","kill","fg","bg","quit","diff"};
 	for(int i=1;i<10;i++){
 		if(cmd == innerCommands[i-1]){
 			return i;
