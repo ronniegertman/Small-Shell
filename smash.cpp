@@ -45,8 +45,6 @@ void parse_prompt(ShellPrompt &prompt) {
     // It automatically handles and discards multiple spaces, and leading/trailing spaces.
 	prompt.leftover >> prompt.shellcmd.command; // first word is the command
     while (prompt.leftover >> word) {
-        printf("word is: %s\n", word.c_str());
-        printf("leftover is: %s\n", prompt.leftover.str().c_str());
 		// & will always come at the prompt's end
 		if(word == "&"){
 			prompt.shellcmd.isBackground = true;
@@ -176,15 +174,13 @@ int main(int argc, char* argv[])
 		shellPrompt.isPromptDone = false;
 		//inner loop to handle &&
 		while(shellPrompt.isPromptDone == false){
-            printf("leftover before parse: %s\n", shellPrompt.leftover.str().c_str());
 			parse_prompt(shellPrompt);
-            printf("leftover before parse: %s\n", shellPrompt.leftover.str().c_str());
-            // printf("command: %s\n", shellPrompt.shellcmd.command.c_str());
 			exe_command(shellPrompt.shellcmd);
-			shellPrompt.shellcmd.args.clear(); //maybe will do it in exe_cmd
-			// but just so i wont forget
+			shellPrompt.shellcmd.args.clear();
 			shellPrompt.shellcmd.nargs = 0;
 		}
+		shellPrompt.leftover.clear(); //reset ss to get data
+		shellPrompt.leftover.str(""); //Empty the text buffer
 		//initialize buffers for next command
 		_line[0] = '\0';
 		_cmd[0] = '\0';
