@@ -125,14 +125,16 @@ void exe_command(ShellCommand &cmd){
 	//returns index of inner command if inner
 	//0 if outer
 	int innercmdIndex = inner_index(cmd.command); 
-	if(innercmdIndex > 0){
+	if(innercmdIndex > 0){ // inner command
 		if(cmd.isBackground == false){
+			cmd.pid = getpid();
 			call_inner(cmd, innercmdIndex);
 		}
 		else{
 			pid = my_system_call(SYS_FORK);
 			if(pid == 0){
 				// child
+				cmd.pid = getpid();
 				call_inner(cmd,innercmdIndex);
 			}
 			else if(pid > 0){
@@ -140,10 +142,11 @@ void exe_command(ShellCommand &cmd){
 			}
 		}
 	}
-	else if(innercmdIndex == 0){
+	else if(innercmdIndex == 0){ // outer command
 		pid = my_system_call(SYS_FORK);
 		if(pid == 0){
 			//child
+			cmd.pid = getpid();
 			args_vector_to_array(cmd,argv);
 			my_system_call(SYS_EXECVP,cmd.command.c_str(),argv);
 		}
@@ -152,7 +155,9 @@ void exe_command(ShellCommand &cmd){
 				jm.addJob(cmd,pid,2);
 			}
 			else{
+				jm.updateFgCmd(cmd);
 				my_system_call(SYS_WAITPID,pid,&status);
+				jm.clearFgCmd();
 			}
 		}
 	}

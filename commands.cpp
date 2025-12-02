@@ -159,7 +159,7 @@ void fg(ShellCommand& cmd, JobManager& jm){
 		return;
 	}
 	if (cmd.nargs == 1 && !isUnsignedInt(cmd.args[0])){
-		perrorSmash("kill", "invalid arguments");
+		perrorSmash("fg", "invalid arguments");
 		return;
 	}
 
@@ -193,7 +193,9 @@ void fg(ShellCommand& cmd, JobManager& jm){
 	jm.updateFgCmd(job->cmd);
 	jm.removeJobById(jobId);
 	int status = 0;
+	jm.updateFgCmd(cmd);
 	my_system_call(SYS_WAITPID, pid, &status, WUNTRACED);
+	jm.clearFgCmd();
 }
 
 void bg(ShellCommand& cmd, JobManager& jm){
