@@ -5,14 +5,25 @@
 =============================================================================*/
 #include <stdlib.h>
 #include "commands.h"
+#include "shellprompt.h"
+#include "my_system_call.h"
 #include "signals.h"
 #include <string>
 #include <vector>
 #include <sstream>
 #include <string.h>
-#include <unistd.h>
-#include <csignal>
-#include "signals.h"
+
+#define SHOWPID     1
+#define PWD         2
+#define CD          3
+#define JOBS        4
+#define KILL        5
+#define FG          6
+#define BG          7
+#define QUIT        8
+#define DIFF        9
+
+
 /*=============================================================================
 * classes/structs declarations
 =============================================================================*/
@@ -21,78 +32,163 @@
 * global variables & data structures
 =============================================================================*/
 char _line[CMD_LENGTH_MAX];
-
+JobManager jm;
 /*=============================================================================
 * main function
 =============================================================================*/
-std::vector<std::string> tokenize_words(const std::string& input) {
+void parse_prompt(ShellPrompt &prompt) {
     std::vector<std::string> words;
     // Use an istringstream to handle the splitting
-    std::stringstream ss(input);
     std::string word;
 
     // The extraction operator (>>) reads tokens separated by whitespace.
     // It automatically handles and discards multiple spaces, and leading/trailing spaces.
-    while (ss >> word) {
-        words.push_back(word);
+	prompt.leftover >> prompt.shellcmd.command; // first word is the command
+    while (prompt.leftover >> word) {
+        printf("word is: %s\n", word.c_str());
+        printf("leftover is: %s\n", prompt.leftover.str().c_str());
+		// & will always come at the prompt's end
+		if(word == "&"){
+			prompt.shellcmd.isBackground = true;
+			prompt.isPromptDone = true;
+			return;
+		}
+		// && meaning the prompt is not done
+		else if(word == "&&"){
+			return;
+		}
+		else{
+			prompt.shellcmd.args.push_back(word);
+			prompt.shellcmd.nargs++;
+		}
+    }
+	//prompt is done if reached here
+	prompt.isPromptDone = true;
+    return;
+}
+
+int inner_index(std::string &cmd){
+	const char* innerCommands[9] = {"showpid","pwd","cd",
+		"jobs","fg","bg","kill","quit","diff"};
+	for(int i=1;i<10;i++){
+		if(cmd == innerCommands[i-1]){
+			return i;
+		}
+	}
+	return 0;
+}
+
+void call_inner(ShellCommand &cmd, int innercmd){
+	switch(innercmd){
+		case(SHOWPID):
+            showpid(cmd);
+			return; 
+		case(PWD):
+			return pwd(cmd);
+		case(CD):
+			return cd(cmd);
+		case(JOBS):
+			return jobs(cmd,jm);
+		case(KILL):
+			return kill(cmd,jm);
+		case(FG):
+			return fg(cmd,jm);
+		case(BG):
+			return bg(cmd,jm);	
+		case(QUIT):
+			return quit(cmd,jm);
+		case(DIFF):
+			return diff(cmd);
+	}
+}
+
+void args_vector_to_array(ShellCommand &cmd, char **argv) {
+    // 1. argv[0] must be the command name itself
+    // We use const_cast because c_str() returns 'const char*' 
+    // but the execvp signature (and your array) expects 'char*'
+    argv[0] = const_cast<char*>(cmd.command.c_str());
+
+    // 2. Copy the arguments from the vector to the array starting at index 1
+    for (size_t i = 0; i < cmd.args.size(); ++i) {
+        argv[i + 1] = const_cast<char*>(cmd.args[i].c_str());
     }
 
-    return words;
+    // 3. The array MUST be terminated by a NULL pointer for execvp to know where to stop
+    argv[cmd.nargs + 1] = NULL;
+}
+
+//void just for now
+void exe_command(ShellCommand &cmd){
+	pid_t pid;
+	int status;
+	char* argv[MAX_ARGS + 2]; // +2 for command itself 
+	//and null terminator
+	
+	//returns index of inner command if inner
+	//0 if outer
+	int innercmdIndex = inner_index(cmd.command); 
+	if(innercmdIndex > 0){
+		if(cmd.isBackground == false){
+			call_inner(cmd, innercmdIndex);
+		}
+		else{
+			pid = my_system_call(SYS_FORK);
+			if(pid == 0){
+				// child
+				call_inner(cmd,innercmdIndex);
+			}
+			else if(pid > 0){
+				jm.addJob(cmd,pid,2);
+			}
+		}
+	}
+	else if(innercmdIndex == 0){
+		pid = my_system_call(SYS_FORK);
+		if(pid == 0){
+			//child
+			args_vector_to_array(cmd,argv);
+			my_system_call(SYS_EXECVP,cmd.command.c_str(),argv);
+		}
+		else if(pid > 0){
+			if(cmd.isBackground == true){
+				jm.addJob(cmd,pid,2);
+			}
+			else{
+				my_system_call(SYS_WAITPID,pid,&status);
+			}
+		}
+	}
+	return;
 }
 
 
 
 
-// int main(int argc, char* argv[])
-// {
-// 	char _cmd[CMD_LENGTH_MAX];
-// 	while(1) {
-// 		printf("smash > ");
-// 		fgets(_line, CMD_LENGTH_MAX, stdin);
-// 		strcpy(_cmd, _line);
-// 		//execute command
-// 		std::string cmdStr(_cmd);
-// 		std::vector<std::string> tokens = tokenize_words(cmdStr);
-		
-// 		printf("Tokens:\n");
-// 		for (auto token : tokens) {
-// 			printf("'%s'\n", token.c_str());
-// 		}
-// 		//initialize buffers for next command
-// 		_line[0] = '\0';
-// 		_cmd[0] = '\0';
-// 	}
+int main(int argc, char* argv[])
+{
+	char _cmd[CMD_LENGTH_MAX];
+	ShellPrompt shellPrompt; //object to handle each prompt
+	while(1) {
+		printf("smash > ");
+		fgets(_line, CMD_LENGTH_MAX, stdin);
+		strcpy(_cmd, _line);
+		shellPrompt.leftover  << _cmd; //put prompt in ss
+		shellPrompt.isPromptDone = false;
+		//inner loop to handle &&
+		while(shellPrompt.isPromptDone == false){
+            printf("leftover before parse: %s\n", shellPrompt.leftover.str().c_str());
+			parse_prompt(shellPrompt);
+            printf("leftover before parse: %s\n", shellPrompt.leftover.str().c_str());
+            // printf("command: %s\n", shellPrompt.shellcmd.command.c_str());
+			exe_command(shellPrompt.shellcmd);
+			shellPrompt.shellcmd.args.clear(); //maybe will do it in exe_cmd
+			// but just so i wont forget
+			shellPrompt.shellcmd.nargs = 0;
+		}
+		//initialize buffers for next command
+		_line[0] = '\0';
+		_cmd[0] = '\0';
+	}
 
-// 	return 0;
-// }
-
-int main(int argc, char* argv[]){
-    // ShellCommand c1("ls", {"-l"}, false, 1234, 1);
-    // ShellCommand c2("sleep", {"10"}, true, 1235, 1);
-    // JobManager jm;
-
-    // int jobId = jm.addJob(c1, c1.pid, 0);
-    // jm.addJob(c2, c2.pid, 0);
-    // printf("%s", jm.printJobsList().c_str());
-    // printf("\n");
-    // jm.removeJobByPid(c1.pid);
-    // printf("%s", jm.printJobsList().c_str());
-    // ShellCommand c3("echo", {"Hello, World!"}, false, 1236, 1);
-    // jm.addJob(c3, c3.pid, 3);
-    // printf("\n");
-    // printf("%s", jm.printJobsList().c_str());
-    ShellCommand otherbash = ShellCommand("bash", {}, true, 84507, 0);
-    JobManager jm;
-    jm.addJob(otherbash, otherbash.pid, 2);
-    ShellCommand killcmd("kill", {"9","1"}, false, 123, 2);
-    printf("%s", jm.printJobsList().c_str());
-    printf("\n");
-    kill(killcmd, jm);
-    sleep(2);
-    // waitpid only works for child processes
-    jm.updateList();
-    printf("%s", jm.printJobsList().c_str());
-    // ShellCommand bgcmd("bg", {}, false, 123, 0);
-    // bg(bgcmd, jm);
 	return 0;
 }
