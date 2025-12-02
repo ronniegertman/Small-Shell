@@ -132,6 +132,9 @@ int JobManager::killJobById(int jobId){
 	int status = 0;
 	  for (int i = 0; i < 50; i++) {
         result = my_system_call(SYS_WAITPID ,job->pid, &status, WNOHANG);
+		if(result == -1){
+			return -1;
+		}
         if (result == job->pid) {
             // child exited during wait
 			out << "done\n";

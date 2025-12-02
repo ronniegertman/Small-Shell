@@ -18,7 +18,7 @@ pid_t showpid(ShellCommand& cmd)
 		perrorSmash("showpid", "expected 0 arguments");
 		return -1;
 	}
-
+	// pid syscalls never fail
 	pid_t pid;
 	if(cmd.isBackground) {
 		pid = getppid();
@@ -37,7 +37,10 @@ void pwd(ShellCommand& cmd){
 		return;
 	}
 	char cwd[CMD_LENGTH_MAX]; //current working directory
-	getcwd(cwd, sizeof(cwd));
+	if(getcwd(cwd, sizeof(cwd)) == NULL){
+		perror("smash error: pwd failed");
+		return;
+	}
 	printf("%s\n", cwd);
 	
 }
@@ -64,7 +67,10 @@ void cd(ShellCommand& cmd){
 		return;
 	}
 	char cwd[CMD_LENGTH_MAX]; //current working directory
-	getcwd(cwd, sizeof(cwd));
+	if(getcwd(cwd, sizeof(cwd)) == NULL){
+		perror("smash error: cd failed");
+		return;
+	}
 
 	std::string currentDir = cwd;
 	std::string targetDir;
@@ -96,7 +102,10 @@ void cd(ShellCommand& cmd){
 	}
 
 	// performing the dir change:
-	chdir(targetDir.c_str());
+	if(chdir(targetDir.c_str()) == -1){
+		perror("smash error: cd failed");
+		return;
+	}
 	// updating prev_dir
 	strcpy(prev_dir, cwd);
 }
@@ -144,8 +153,8 @@ void kill(ShellCommand& cmd, JobManager& jm){
 	// send the signal
 	int res = my_system_call(SYS_KILL, job->pid, sigNum);
 	if(res == -1){
-		printf("error sending the signal\n");
-		perrorSmash("kill", "invalid arguments");
+		perror("smash error: kill failed");
+		return;
 	}
 }
 // fg
@@ -185,7 +194,10 @@ void fg(ShellCommand& cmd, JobManager& jm){
 	// check if stopped  
 	if(job->status == 3){
 		// SIGCONT = 18
-		my_system_call(SYS_KILL, job->pid, 18);
+		if(my_system_call(SYS_KILL, job->pid, 18) == -1){
+			perror("smash error: fg failed");
+			return;
+		}
 	}
 
 	// bring job to foreground
@@ -232,24 +244,21 @@ void bg(ShellCommand& cmd, JobManager& jm){
 		perrorSmash("bg", "there are no stopped jobs to resume");
 		return;
 	}
-	printf("befoer out\n");
 	std::stringstream out;
 	out <<"[" << job->jobId << "] "
 	<< job->cmd.command << " ";
-	printf("before loop\n");
 	for(const auto &argument: job->cmd.args){
 			out << argument;
 	}
-	printf("before if is background\n");
 	if(job->cmd.isBackground){ out << " &"; }
-	printf("before out\n");
 	out << " : "
 	<< job->pid << std::endl;
 
 	// SIGCONT = 18
-	printf("before syscall 18\n");
-	my_system_call(SYS_KILL, job->pid, 18);
-	printf("after syscall 18\n");
+	if(my_system_call(SYS_KILL, job->pid, 18) == -1){
+		perror("smash error: bg failed");
+		return;
+	}
 	job->status = 2; // running
 }
 
@@ -268,7 +277,10 @@ void quit(ShellCommand& cmd, JobManager& jm){
 			if(job == nullptr){
 				continue;
 			}
-			jm.killJobById(job->jobId);
+			if(jm.killJobById(job->jobId) == -1){
+				perror("smash error: quit failed");
+				return;
+			}
 		}
 	}
 	exit(0);
@@ -311,12 +323,12 @@ void diff(ShellCommand& cmd){
 	}	
 	f1 = (int)my_system_call(SYS_OPEN ,file1.c_str(), O_RDONLY);
 	if (f1 < 0) { 
-		printf("f1\n");
+		perror("smash error: diff failed");
 		goto l_cleanup; 
 	}
 	f2 = (int)my_system_call(SYS_OPEN ,file2.c_str(), O_RDONLY);
 	if(f2 < 0){
-		printf("f2\n");
+		perror("smash error: diff failed");
 		goto l_cleanup; 
 	}
 
@@ -325,6 +337,7 @@ void diff(ShellCommand& cmd){
 		r2 = my_system_call(SYS_READ, f2, buf2, BUF_SIZE);
 
         if (r1 < 0 || r2 < 0) {
+			perror("smash error: diff failed");
             goto l_cleanup;
         }
 
