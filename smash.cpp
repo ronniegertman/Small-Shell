@@ -157,7 +157,7 @@ void args_vector_to_array(ShellCommand &cmd, char **argv) {
 }
 
 //void just for now
-void exe_command(ShellCommand &cmd){
+int exe_command(ShellCommand &cmd){
 	pid_t pid;
 	int status;
 	char* argv[MAX_ARGS + 2]; // +2 for command itself 
@@ -169,7 +169,8 @@ void exe_command(ShellCommand &cmd){
 	if(innercmdIndex > 0){ // inner command
 		if(cmd.isBackground == false){
 			cmd.pid = getpid();
-			call_inner(cmd, innercmdIndex);
+			if(call_inner(cmd, innercmdIndex) == -1) return -1;
+			else return 0;
 		}
 		else{
 			pid = my_system_call(SYS_FORK);
@@ -177,11 +178,12 @@ void exe_command(ShellCommand &cmd){
 				// child
 				setpgrp();
 				cmd.pid = getpid();
-				call_inner(cmd,innercmdIndex);
-				exit(0);
+				if(call_inner(cmd, innercmdIndex) == -1) exit(1);
+				else exit(0);
 			}
 			else if(pid > 0){
 				jm.addJob(cmd,pid,2);
+				return 0;
 			}
 			else{
 				// fork failed
@@ -201,9 +203,11 @@ void exe_command(ShellCommand &cmd){
 			if(exerr == -1){ // execvp failed
 				if(errno == ENOENT){ // command not found
 					perror("smash error: external: cannot find program");
+					exit(1);
 				}
 				else{
 					perror("smash error: external: invalid command");
+					exit(1);
 				}
 			}
 			exit(0);
@@ -219,6 +223,17 @@ void exe_command(ShellCommand &cmd){
 					perror("smash error: waitpid failed");
 				}
 				jm.clearFgCmd();
+				if(WIFSTOPPED(status)){
+					jm.addJob(cmd,pid,3); // stopped
+				}
+				else if(WEXITED(status) == 1){
+					// command failed in child
+					return -1;
+				}
+				else{
+					// command succeeded
+					return 0;
+				}
 			}
 		}
 		else{
@@ -248,7 +263,9 @@ int main(int argc, char* argv[])
 		//inner loop to handle &&
 		while(shellPrompt.isPromptDone == false){
 			parse_prompt(shellPrompt);
-			exe_command(shellPrompt.shellcmd);
+			if(exe_command(shellPrompt.shellcmd) == -1) {
+				break; // command failed
+			}
 			shellPrompt.shellcmd.isBackground = false;
 			shellPrompt.shellcmd.command = "";
 			shellPrompt.shellcmd.args.clear();
