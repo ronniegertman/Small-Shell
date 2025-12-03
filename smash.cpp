@@ -159,7 +159,7 @@ void args_vector_to_array(ShellCommand &cmd, char **argv) {
 }
 
 //void just for now
-void exe_command(ShellCommand &cmd){
+int exe_command(ShellCommand &cmd){
 	pid_t pid;
 	int status;
 	char* argv[MAX_ARGS + 2]; // +2 for command itself 
@@ -171,7 +171,8 @@ void exe_command(ShellCommand &cmd){
 	if(innercmdIndex > 0){ // inner command
 		if(cmd.isBackground == false){
 			cmd.pid = getpid();
-			call_inner(cmd, innercmdIndex);
+			if(call_inner(cmd, innercmdIndex) == -1) return -1;
+			else return 0;
 		}
 		else{
 			pid = my_system_call(SYS_FORK);
@@ -179,11 +180,12 @@ void exe_command(ShellCommand &cmd){
 				// child
 				setpgrp();
 				cmd.pid = getpid();
-				call_inner(cmd,innercmdIndex);
-				exit(0);
+				if(call_inner(cmd, innercmdIndex) == -1) exit(1);
+				else exit(0);
 			}
 			else if(pid > 0){
 				jm.addJob(cmd,pid,2);
+				return 0;
 			}
 			else{
 				// fork failed
@@ -203,9 +205,11 @@ void exe_command(ShellCommand &cmd){
 			if(exerr == -1){ // execvp failed
 				if(errno == ENOENT){ // command not found
 					perror("smash error: external: cannot find program");
+					exit(1);
 				}
 				else{
 					perror("smash error: external: invalid command");
+					exit(1);
 				}
 			}
 			exit(0);
@@ -221,6 +225,14 @@ void exe_command(ShellCommand &cmd){
 					perror("smash error: waitpid failed");
 				}
 				jm.clearFgCmd();
+				if(WIFSTOPPED(status)){
+					jm.addJob(cmd,pid,3); // stopped
+				}
+				else if(WIFEXITED(status)){
+					// command failed in child
+					int exit_code = WEXITSTATUS(status);
+					return exit_code ? -1 : 0;
+				}
 			}
 		}
 		else{
@@ -229,7 +241,7 @@ void exe_command(ShellCommand &cmd){
 			exit(1);
 			}
 	}
-	return;
+	return 0;
 }
 
 
@@ -240,6 +252,7 @@ int main(int argc, char* argv[])
 	signal(SIGINT, (__sighandler_t)handleSigInt);
 	signal(SIGTSTP, (__sighandler_t)handleSigStp);
 	char _cmd[CMD_LENGTH_MAX];
+	int execResult = 0;
 	ShellPrompt shellPrompt; //object to handle each prompt
 	while(1) {
 		printf("smash > ");
@@ -250,12 +263,19 @@ int main(int argc, char* argv[])
 		//inner loop to handle &&
 		while(shellPrompt.isPromptDone == false){
 			parse_prompt(shellPrompt);
+<<<<<<< HEAD
 			// check if aliased
 			exe_command(shellPrompt.shellcmd);
+=======
+			execResult = exe_command(shellPrompt.shellcmd);
+>>>>>>> 5656e7510e18a48003ec899ebef74c2662f3ad23
 			shellPrompt.shellcmd.isBackground = false;
 			shellPrompt.shellcmd.command = "";
 			shellPrompt.shellcmd.args.clear();
 			shellPrompt.shellcmd.nargs = 0;
+			if(execResult == -1){
+				break;
+			}
 		}
 		shellPrompt.leftover.clear(); //reset ss to get data
 		shellPrompt.leftover.str(""); //Empty the text buffer
