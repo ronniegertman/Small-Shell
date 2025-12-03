@@ -181,6 +181,11 @@ void exe_command(ShellCommand &cmd){
 			else if(pid > 0){
 				jm.addJob(cmd,pid,2);
 			}
+			else{
+				// fork failed
+				perrorSmash("","fork failed");
+				exit(1);
+			}
 		}
 	}
 	else if(innercmdIndex == 0){ // outer command
@@ -190,7 +195,15 @@ void exe_command(ShellCommand &cmd){
 			setpgrp();
 			cmd.pid = getpid();
 			args_vector_to_array(cmd,argv);
-			my_system_call(SYS_EXECVP,cmd.command.c_str(),argv);
+			int exerr = my_system_call(SYS_EXECVP,cmd.command.c_str(),argv);
+			if(exerr == -1){ // execvp failed
+				if(errno == ENOENT){ // command not found
+					perrorSmash("external","cannot find program");
+				}
+				else{
+					perrorSmash("external","invalid command");
+				}
+			}
 			exit(0);
 		}
 		else if(pid > 0){
@@ -204,6 +217,11 @@ void exe_command(ShellCommand &cmd){
 				jm.clearFgCmd();
 			}
 		}
+		else{
+			// fork failed
+			perrorSmash("","fork failed");
+			exit(1);
+			}
 	}
 	return;
 }
