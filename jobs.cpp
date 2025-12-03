@@ -127,12 +127,16 @@ int JobManager::killJobById(int jobId){
 	out << " - " << "sending SIGTERM... ";
 
 	//SIGTERM = 15
-	my_system_call(SYS_KILL, job->pid, 15);
+	if(my_system_call(SYS_KILL, job->pid, 15) == -1){
+		perror("smash error: kill failed");
+		return -1;
+	}
 	pid_t result;
 	int status = 0;
 	  for (int i = 0; i < 50; i++) {
         result = my_system_call(SYS_WAITPID ,job->pid, &status, WNOHANG);
 		if(result == -1){
+			perror("smash error: waitpid failed");
 			return -1;
 		}
         if (result == job->pid) {
@@ -147,8 +151,14 @@ int JobManager::killJobById(int jobId){
 
 	// sending SIGKILL
 	out << "sending SIGKILL... ";
-	my_system_call(SYS_KILL, job->pid, 9); // SIGKILL = 9
-	my_system_call(SYS_WAITPID ,job->pid, &status, 0);
+	if(my_system_call(SYS_KILL, job->pid, 9) == -1){ // SIGKILL = 9
+		perror("smash error: kill failed");
+		return -1;
+	}
+	if(my_system_call(SYS_WAITPID ,job->pid, &status, 0) == -1){
+		perror("smash error: waitpid failed");
+		return -1;
+	}
 	removeJobByPid(job->pid);
 
 	out << "done\n";
@@ -161,6 +171,10 @@ void JobManager::updateList(){
 	std::vector<int> pidsToRemove;
 	for(const auto& job : jobsList) {
 		pid_t result = my_system_call(SYS_WAITPID ,job.pid, nullptr, WNOHANG);
+		if(result == -1){
+			perror("smash error: waitpid failed");
+			continue;
+		}
 		if (result == job.pid) {
 			// job is done
 			pidsToRemove.push_back(job.pid);

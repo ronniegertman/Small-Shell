@@ -195,7 +195,7 @@ void fg(ShellCommand& cmd, JobManager& jm){
 	if(job->status == 3){
 		// SIGCONT = 18
 		if(my_system_call(SYS_KILL, job->pid, 18) == -1){
-			perror("smash error: fg failed");
+			perror("smash error: kill failed");
 			return;
 		}
 	}
@@ -207,7 +207,11 @@ void fg(ShellCommand& cmd, JobManager& jm){
 	jm.removeJobById(jobId);
 	int status = 0;
 	jm.updateFgCmd(jobcmd);
-	my_system_call(SYS_WAITPID, pid, &status, WUNTRACED);
+	if(my_system_call(SYS_WAITPID, pid, &status, WUNTRACED) == -1){
+		perror("smash error: waitpid failed");
+		return;
+	}
+
 	jm.clearFgCmd();
 }
 
@@ -257,7 +261,7 @@ void bg(ShellCommand& cmd, JobManager& jm){
 
 	// SIGCONT = 18
 	if(my_system_call(SYS_KILL, job->pid, 18) == -1){
-		perror("smash error: bg failed");
+		perror("smash error: kill failed");
 		return;
 	}
 	job->status = 2; // running
@@ -324,12 +328,12 @@ void diff(ShellCommand& cmd){
 	}	
 	f1 = (int)my_system_call(SYS_OPEN ,file1.c_str(), O_RDONLY);
 	if (f1 < 0) { 
-		perror("smash error: diff failed");
+		perror("smash error: open failed");
 		goto l_cleanup; 
 	}
 	f2 = (int)my_system_call(SYS_OPEN ,file2.c_str(), O_RDONLY);
 	if(f2 < 0){
-		perror("smash error: diff failed");
+		perror("smash error: open failed");
 		goto l_cleanup; 
 	}
 
@@ -338,7 +342,7 @@ void diff(ShellCommand& cmd){
 		r2 = my_system_call(SYS_READ, f2, buf2, BUF_SIZE);
 
         if (r1 < 0 || r2 < 0) {
-			perror("smash error: diff failed");
+			perror("smash error: read failed");
             goto l_cleanup;
         }
 
@@ -361,6 +365,15 @@ void diff(ShellCommand& cmd){
 	printf("0\n");
 
 l_cleanup:
-	if (f1 >= 0) my_system_call(SYS_CLOSE, f1);
-	if (f2 >= 0) my_system_call(SYS_CLOSE, f2);
+	if (f1 >= 0){
+		if(my_system_call(SYS_CLOSE, f1) == -1){
+			perror("smash error: close failed");
+		}
+	}
+	if (f2 >= 0){
+		if(my_system_call(SYS_CLOSE, f2) == -1){
+			perror("smash error: close failed");
+		}
+	}
+	
 }

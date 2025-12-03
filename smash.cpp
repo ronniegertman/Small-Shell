@@ -183,7 +183,7 @@ void exe_command(ShellCommand &cmd){
 			}
 			else{
 				// fork failed
-				perrorSmash("","fork failed");
+				perror("smash error: fork failed");
 				exit(1);
 			}
 		}
@@ -198,10 +198,10 @@ void exe_command(ShellCommand &cmd){
 			int exerr = my_system_call(SYS_EXECVP,cmd.command.c_str(),argv);
 			if(exerr == -1){ // execvp failed
 				if(errno == ENOENT){ // command not found
-					perrorSmash("external","cannot find program");
+					perror("smash error: external: cannot find program");
 				}
 				else{
-					perrorSmash("external","invalid command");
+					perror("smash error: external: invalid command");
 				}
 			}
 			exit(0);
@@ -213,13 +213,15 @@ void exe_command(ShellCommand &cmd){
 			}
 			else{
 				jm.updateFgCmd(cmd);
-				my_system_call(SYS_WAITPID,pid,&status,WUNTRACED);
+				if(my_system_call(SYS_WAITPID,pid,&status,WUNTRACED) == -1){
+					perror("smash error: waitpid failed");
+				}
 				jm.clearFgCmd();
 			}
 		}
 		else{
 			// fork failed
-			perrorSmash("","fork failed");
+			perror("smash error: fork failed");
 			exit(1);
 			}
 	}
