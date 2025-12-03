@@ -149,6 +149,7 @@ int kill(ShellCommand& cmd, JobManager& jm){
 		perror("smash error: kill failed");
 		return -1;
 	}
+	return 0;
 }
 // fg
 int fg(ShellCommand& cmd, JobManager& jm){
@@ -206,6 +207,7 @@ int fg(ShellCommand& cmd, JobManager& jm){
 	}
 
 	jm.clearFgCmd();
+	return 0;
 }
 
 int bg(ShellCommand& cmd, JobManager& jm){
@@ -258,6 +260,7 @@ int bg(ShellCommand& cmd, JobManager& jm){
 		return -1;
 	}
 	job->status = 2; // running
+	return 0;
 }
 
 int quit(ShellCommand& cmd, JobManager& jm){

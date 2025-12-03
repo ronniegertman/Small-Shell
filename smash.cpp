@@ -135,6 +135,9 @@ int call_inner(ShellCommand &cmd, int innercmd){
 			return quit(cmd,jm);
 		case(DIFF):
 			return diff(cmd);
+		default:
+			printf("entered default in call_inner, need fixing\n");
+			return -1;
 	}
 }
 
