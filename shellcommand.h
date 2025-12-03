@@ -15,5 +15,19 @@ class ShellCommand {
 		ShellCommand(std::string cmd, std::vector<std::string> arguments, bool bg, pid_t p, int n);
 };
 
+class Alias {
+	public:
+	std::string originalcmd;
+	std::string aliasedcmd;
+	Alias(std::string originalcmd, std::string aliasedcmd);
+};
+
+class AliasedCmds {
+	std::vector<Alias> aliasedList;
+	public:
+	void addAlias(std::string original, std::string aliased);
+	void unAlias(std::string aliased);
+	std::string getRealCmd(std::string aliascmd);
+};
 #endif /* SHELLCOMMAND_H */
 /*=============================================================================*/

@@ -28,7 +28,6 @@
 /*=============================================================================
 * classes/structs declarations
 =============================================================================*/
-
 /*=============================================================================
 * global variables & data structures
 =============================================================================*/
@@ -82,6 +81,9 @@ void parse_prompt(ShellPrompt &prompt) {
     // The extraction operator (>>) reads tokens separated by whitespace.
     // It automatically handles and discards multiple spaces, and leading/trailing spaces.
 	prompt.leftover >> prompt.shellcmd.command; // first word is the command
+	if(prompt.shellcmd.command == "alias"){
+		// handle alias
+	}
     while (prompt.leftover >> word) {
 		// & will always come at the prompt's end
 		if(word == "&"){
@@ -248,6 +250,7 @@ int main(int argc, char* argv[])
 		//inner loop to handle &&
 		while(shellPrompt.isPromptDone == false){
 			parse_prompt(shellPrompt);
+			// check if aliased
 			exe_command(shellPrompt.shellcmd);
 			shellPrompt.shellcmd.isBackground = false;
 			shellPrompt.shellcmd.command = "";
