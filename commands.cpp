@@ -9,7 +9,6 @@
 #include <vector>
 #include <ctime>
 #include <sstream>
-#include <sys/stat.h>
 
 // showpid
 pid_t showpid(ShellCommand& cmd)
@@ -31,45 +30,33 @@ pid_t showpid(ShellCommand& cmd)
 }
 
 //pwd
-void pwd(ShellCommand& cmd){
+int pwd(ShellCommand& cmd){
 	if(cmd.nargs != 0) {
 		perrorSmash("pwd", "expected 0 arguments");
-		return;
+		return -1;
 	}
 	char cwd[CMD_LENGTH_MAX]; //current working directory
 	if(getcwd(cwd, sizeof(cwd)) == NULL){
 		perror("smash error: pwd failed");
-		return;
+		return -1;
 	}
 	printf("%s\n", cwd);
+	return 0;
 	
-}
-
-//cd
-bool isRegularFile(const std::string& path) {
-    struct stat info;
-    if (stat(path.c_str(), &info) != 0) return false; // does not exist
-    return S_ISREG(info.st_mode);                       // true if regular file
-}
-
-bool isDirectory(const std::string& path) {
-    struct stat info;
-    if (stat(path.c_str(), &info) != 0) return false;
-    return S_ISDIR(info.st_mode);
 }
 
 
 char prev_dir[CMD_LENGTH_MAX] = "";
 
-void cd(ShellCommand& cmd){
+int cd(ShellCommand& cmd){
 	if(cmd.nargs != 1) {
 		perrorSmash("cd", "expected 1 arguments");
-		return;
+		return -1;
 	}
 	char cwd[CMD_LENGTH_MAX]; //current working directory
 	if(getcwd(cwd, sizeof(cwd)) == NULL){
 		perror("smash error: cd failed");
-		return;
+		return -1;
 	}
 
 	std::string currentDir = cwd;
@@ -78,7 +65,7 @@ void cd(ShellCommand& cmd){
 	if(cmd.args[0] == "-") {
 		if(strlen(prev_dir) == 0) {
 			perrorSmash("cd", "old pwd not set");
-			return;
+			return -1;
 		}
 		targetDir = std::string(prev_dir);
 		printf("%s\n", targetDir.c_str());
@@ -90,34 +77,39 @@ void cd(ShellCommand& cmd){
 	} else {
 		targetDir = cmd.args[0];
 	}	
-	// checking for valid directory
-	if(isRegularFile(targetDir)) {
-		std::string err = targetDir + ": not a directory";
-		perrorSmash("cd", err.c_str());
-		return;
-	}
-	if(!isDirectory(targetDir)) {
-		perrorSmash("cd", "target directory does not exist");
-		return;
-	}
+	
 
 	// performing the dir change:
 	if(chdir(targetDir.c_str()) == -1){
-		perror("smash error: cd failed");
-		return;
+		if(errno == ENOENT){
+			perrorSmash("cd", "target directory does not exist");
+			return -1;
+		}
+		else if(errno == ENOTDIR){
+			std::string err = targetDir + ": not a directory";
+			perrorSmash("cd", err.c_str());
+			return -1;
+		}
+		else{
+			perror("smash error: chdir failed");
+			return -1;
+		}
+
 	}
 	// updating prev_dir
 	strcpy(prev_dir, cwd);
+	return 0;
 }
 
 //jobs
 // PRINT SRGUMENTS LIST
-void jobs(ShellCommand& cmd, JobManager& jm){
+int jobs(ShellCommand& cmd, JobManager& jm){
 	if(cmd.nargs !=0){
 		perrorSmash("jobs", "expected 0 arguments");
-		return;
+		return -1;
 	}
 	printf("%s", jm.printJobsList().c_str());
+	return 0;
 }
 
 bool isUnsignedInt(const std::string& s) {
@@ -131,14 +123,14 @@ bool isUnsignedInt(const std::string& s) {
 }
 
 //kill
-void kill(ShellCommand& cmd, JobManager& jm){
+int kill(ShellCommand& cmd, JobManager& jm){
 	if(cmd.nargs !=2){
 		perrorSmash("kill", "invalid arguments");
-		return;
+		return -1;
 	}
 	if (!isUnsignedInt(cmd.args[0]) || !isUnsignedInt(cmd.args[1])){
 		perrorSmash("kill", "invalid arguments");
-		return;
+		return -1;
 	}
 
 	int sigNum = std::stoi(cmd.args[0]);
@@ -148,28 +140,29 @@ void kill(ShellCommand& cmd, JobManager& jm){
 	if(job == nullptr){
 		std::string err = "job id " + cmd.args[1] +  " does not exist";
 		perrorSmash("kill", err.c_str());
+		return -1;
 	}
 
 	// send the signal
 	int res = my_system_call(SYS_KILL, job->pid, sigNum);
 	if(res == -1){
 		perror("smash error: kill failed");
-		return;
+		return -1;
 	}
 }
 // fg
-void fg(ShellCommand& cmd, JobManager& jm){
+int fg(ShellCommand& cmd, JobManager& jm){
 	if(cmd.nargs > 1){
 		perrorSmash("fg", "invalid arguments");
-		return;
+		return -1;
 	}
 	if (jm.isEmpty()){
 		perrorSmash("fg", "jobs list is empty");
-		return;
+		return -1;
 	}
 	if (cmd.nargs == 1 && !isUnsignedInt(cmd.args[0])){
 		perrorSmash("fg", "invalid arguments");
-		return;
+		return -1;
 	}
 
 	int jobId = cmd.nargs == 0? jm.getLastJobId() : std::stoi(cmd.args[0]);
@@ -178,7 +171,7 @@ void fg(ShellCommand& cmd, JobManager& jm){
 		std::stringstream err;
 		err << "job id " << jobId << " does not exist";
 		perrorSmash("fg", err.str().c_str());;
-		return;
+		return -1;
 	}
 
 	std::stringstream out;
@@ -196,7 +189,7 @@ void fg(ShellCommand& cmd, JobManager& jm){
 		// SIGCONT = 18
 		if(my_system_call(SYS_KILL, job->pid, 18) == -1){
 			perror("smash error: kill failed");
-			return;
+			return -1;
 		}
 	}
 
@@ -209,32 +202,36 @@ void fg(ShellCommand& cmd, JobManager& jm){
 	jm.updateFgCmd(jobcmd);
 	if(my_system_call(SYS_WAITPID, pid, &status, WUNTRACED) == -1){
 		perror("smash error: waitpid failed");
-		return;
+		return -1;
 	}
 
 	jm.clearFgCmd();
 }
 
-void bg(ShellCommand& cmd, JobManager& jm){
+int bg(ShellCommand& cmd, JobManager& jm){
 	if(cmd.nargs > 1){
 		perrorSmash("bg", "invalid arguments");
-		return;
+		return -1;
 	}
 	if(jm.isEmpty()){
 		perrorSmash("bg", "there are no stopped jobs to resume");
-		return;
+		return -1;
 	}
 	if (cmd.nargs == 1 && !isUnsignedInt(cmd.args[0])){
 		perrorSmash("bg", "invalid arguments");
-		return;
+		return -1;
 	}
-	int jobId = cmd.nargs == 0? jm.getLastJobId() : std::stoi(cmd.args[0]);
+	int jobId = cmd.nargs == 0? jm.getLastStoppedJobId() : std::stoi(cmd.args[0]);
+	if(cmd.nargs == 0 && jobId == -1){
+		perrorSmash("bg", "there are no stopped jobs to resume");
+		return -1;
+	}
 	Job* job = jm.getJobById(jobId);
 	if(job == nullptr){
 		std::stringstream err;
 		err << "job id " << jobId << " does not exist";
 		perrorSmash("bg", err.str().c_str());
-		return;
+		return -1;
 	}
 
 	// check if stopped  
@@ -242,13 +239,9 @@ void bg(ShellCommand& cmd, JobManager& jm){
 		std::stringstream err;
 		err << "job id " << jobId << " is already in background";
 		perrorSmash("bg", err.str().c_str());
-		return;
+		return -1;
 	}
 
-	if(job->status != 3){
-		perrorSmash("bg", "there are no stopped jobs to resume");
-		return;
-	}
 	std::stringstream out;
 	out <<"[" << job->jobId << "] "
 	<< job->cmd.command << " ";
@@ -262,19 +255,19 @@ void bg(ShellCommand& cmd, JobManager& jm){
 	// SIGCONT = 18
 	if(my_system_call(SYS_KILL, job->pid, 18) == -1){
 		perror("smash error: kill failed");
-		return;
+		return -1;
 	}
 	job->status = 2; // running
 }
 
-void quit(ShellCommand& cmd, JobManager& jm){
+int quit(ShellCommand& cmd, JobManager& jm){
 	if(cmd.nargs > 1){
 		perrorSmash("quit", "expected 0 or 1 arguments");
-		return;
+		return -1;
 	}
 	if(cmd.nargs == 1 && cmd.args[0] != "kill"){
 		perrorSmash("quit", "unexpected arguments");
-		return;
+		return -1;
 	}
 	if(cmd.nargs == 1 && cmd.args[0] == "kill"){
 		for (int i=0; i<jm.size(); i++){
@@ -284,7 +277,7 @@ void quit(ShellCommand& cmd, JobManager& jm){
 			}
 			if(jm.killJobById(job->jobId) == -1){
 				perror("smash error: quit failed");
-				return;
+				return -1;
 			}
 		}
 	}
@@ -302,7 +295,7 @@ void perrorSmash(const char* cmd, const char* msg)
         msg);
 }
 
-void diff(ShellCommand& cmd){
+int diff(ShellCommand& cmd){
 	int f1=-1, f2=-1;
 	const int BUF_SIZE = 4096;
     char buf1[BUF_SIZE];
@@ -312,28 +305,22 @@ void diff(ShellCommand& cmd){
 
 	if(cmd.nargs != 2){
 		perrorSmash("diff", "expected 2 arguments");
-		return;
+		return -1;
 	}
 	file1 = cmd.args[0];
 	file2 = cmd.args[1];
-
-	if ((!isDirectory(file1)  && !isRegularFile(file1)) || (!isDirectory(file2) && !isRegularFile(file2))){
-		perrorSmash("diff", "expected valid paths for files");
-		return;
-	}
-
-	if(isDirectory(file1) || isDirectory(file2)){
-		perrorSmash("diff", "paths are not files");
-		return;
-	}	
+	int returnCode = 0;
+	
 	f1 = (int)my_system_call(SYS_OPEN ,file1.c_str(), O_RDONLY);
 	if (f1 < 0) { 
-		perror("smash error: open failed");
+		perrorSmash("diff", "expected valid paths for files");
+		returnCode = -1;
 		goto l_cleanup; 
 	}
 	f2 = (int)my_system_call(SYS_OPEN ,file2.c_str(), O_RDONLY);
 	if(f2 < 0){
-		perror("smash error: open failed");
+		perrorSmash("diff", "expected valid paths for files");
+		returnCode = -1;
 		goto l_cleanup; 
 	}
 
@@ -342,9 +329,16 @@ void diff(ShellCommand& cmd){
 		r2 = my_system_call(SYS_READ, f2, buf2, BUF_SIZE);
 
         if (r1 < 0 || r2 < 0) {
-			perror("smash error: read failed");
-            goto l_cleanup;
-        }
+			if (errno == EISDIR) {
+                // READ FAILED because it's a directory
+                // Matches your original: (isDirectory || isDirectory)
+                perrorSmash("diff", "paths are not files");
+            } else {
+                perror("smash error: read failed");
+        	}
+			returnCode = -1;
+			goto l_cleanup;
+		}
 
         if (r1 != r2) {
 			printf("1\n");
@@ -361,19 +355,21 @@ void diff(ShellCommand& cmd){
                 goto l_cleanup;
             }
         }
-    }
+	}
 	printf("0\n");
 
-l_cleanup:
-	if (f1 >= 0){
-		if(my_system_call(SYS_CLOSE, f1) == -1){
-			perror("smash error: close failed");
+	l_cleanup:
+		if (f1 >= 0){
+			if(my_system_call(SYS_CLOSE, f1) == -1){
+				perror("smash error: close failed");
+				returnCode = -1;
+			}
 		}
-	}
-	if (f2 >= 0){
-		if(my_system_call(SYS_CLOSE, f2) == -1){
-			perror("smash error: close failed");
+		if (f2 >= 0){
+			if(my_system_call(SYS_CLOSE, f2) == -1){
+				perror("smash error: close failed");
+				returnCode = -1;
+			}
 		}
+		return returnCode;
 	}
-	
-}

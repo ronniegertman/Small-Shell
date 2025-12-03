@@ -61,16 +61,14 @@ typedef enum {
 int parseCommandExample(char* line);
 void perrorSmash(const char* cmd, const char* msg);
 pid_t showpid(ShellCommand& cmd);
-void pwd(ShellCommand& cmd);
-bool isRegularFile(const std::string& path);
-bool isDirectory(const std::string& path);
-void cd(ShellCommand& cmd);
-void jobs(ShellCommand& cmd, JobManager& jm);
-void kill(ShellCommand& cmd, JobManager& jm);
-void fg(ShellCommand& cmd, JobManager& jm);
-void bg(ShellCommand& cmd, JobManager& jm);
-void quit(ShellCommand& cmd, JobManager& jm);
-void diff(ShellCommand& cmd);
+int pwd(ShellCommand& cmd);
+int cd(ShellCommand& cmd);
+int jobs(ShellCommand& cmd, JobManager& jm);
+int kill(ShellCommand& cmd, JobManager& jm);
+int fg(ShellCommand& cmd, JobManager& jm);
+int bg(ShellCommand& cmd, JobManager& jm);
+int quit(ShellCommand& cmd, JobManager& jm);
+int diff(ShellCommand& cmd);
 bool isUnsignedInt(const std::string& s);
 
 #endif //COMMANDS_H

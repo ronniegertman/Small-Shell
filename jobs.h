@@ -36,6 +36,7 @@ class JobManager{
 		void updateList();
 		void updateFgCmd(ShellCommand& cmd);
 		void clearFgCmd();
+		int getLastStoppedJobId();
 };
 /*=============================================================================*/
 #endif //JOBS_H

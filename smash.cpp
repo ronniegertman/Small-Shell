@@ -38,8 +38,7 @@ JobManager jm;
 * main function
 =============================================================================*/
 void handleSigStp() {
-	pid_t fgpid;
-
+	pid_t fgpid;	
     // check if this is the shell process
     printf("smash: caught CTRL+Z\n");
 	if(jm.fgactive == false){  // no other process but the shell is in fg
@@ -115,11 +114,11 @@ int inner_index(std::string &cmd){
 	return 0;
 }
 
-void call_inner(ShellCommand &cmd, int innercmd){
+int call_inner(ShellCommand &cmd, int innercmd){
 	switch(innercmd){
 		case(SHOWPID):
-            showpid(cmd);
-			return; 
+            if(showpid(cmd) == -1) return -1;
+			else return 0; 
 		case(PWD):
 			return pwd(cmd);
 		case(CD):

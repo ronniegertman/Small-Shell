@@ -107,7 +107,7 @@ int JobManager::size(){
 
 int JobManager::getLastJobId(){
 	if(jobsList.empty()){
-		return 0;
+		return -1;
 	}
 	return jobsList.back().jobId;
 }
@@ -194,4 +194,17 @@ void JobManager::updateFgCmd(ShellCommand& cmd){
 void JobManager::clearFgCmd(){
 	this->fgactive = false;
 	fgcmd = ShellCommand("", {}, false, -1, 0);
+}
+
+int JobManager::getLastStoppedJobId(){
+	if(jobsList.empty()){
+		return -1;
+	}
+	int stoppedJobId = -1; // default value if no stopped jobs
+	for(auto it = jobsList.rbegin(); it != jobsList.rend(); it++) {
+		if(it->status == 3){ // stopped
+			stoppedJobId = it->jobId;
+		}
+	}
+	return stoppedJobId;
 }
