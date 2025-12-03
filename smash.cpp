@@ -226,13 +226,10 @@ int exe_command(ShellCommand &cmd){
 				if(WIFSTOPPED(status)){
 					jm.addJob(cmd,pid,3); // stopped
 				}
-				else if(WEXITED(status) == 1){
+				else if(WIFEXITED(status)){
 					// command failed in child
-					return -1;
-				}
-				else{
-					// command succeeded
-					return 0;
+					int exit_code = WEXITSTATUS(status);
+					return exit_code ? -1 : 0;
 				}
 			}
 		}
@@ -242,7 +239,7 @@ int exe_command(ShellCommand &cmd){
 			exit(1);
 			}
 	}
-	return;
+	return 0;
 }
 
 
@@ -253,6 +250,7 @@ int main(int argc, char* argv[])
 	signal(SIGINT, (__sighandler_t)handleSigInt);
 	signal(SIGTSTP, (__sighandler_t)handleSigStp);
 	char _cmd[CMD_LENGTH_MAX];
+	int execResult = 0;
 	ShellPrompt shellPrompt; //object to handle each prompt
 	while(1) {
 		printf("smash > ");
@@ -263,13 +261,14 @@ int main(int argc, char* argv[])
 		//inner loop to handle &&
 		while(shellPrompt.isPromptDone == false){
 			parse_prompt(shellPrompt);
-			if(exe_command(shellPrompt.shellcmd) == -1) {
-				break; // command failed
-			}
+			execResult = exe_command(shellPrompt.shellcmd);
 			shellPrompt.shellcmd.isBackground = false;
 			shellPrompt.shellcmd.command = "";
 			shellPrompt.shellcmd.args.clear();
 			shellPrompt.shellcmd.nargs = 0;
+			if(execResult == -1){
+				break;
+			}
 		}
 		shellPrompt.leftover.clear(); //reset ss to get data
 		shellPrompt.leftover.str(""); //Empty the text buffer
