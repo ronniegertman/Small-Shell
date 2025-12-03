@@ -375,4 +375,77 @@ int diff(ShellCommand& cmd){
 			}
 		}
 		return returnCode;
+}
+
+int alias(ShellCommand& cmd) {
+	// format is alias <new_cmd_name>="<the command>"
+    if (cmd.nargs == 0) {
+		perrorSmash("alias", "expected at least 1 argument");
+        return -1;
+    }
+    // 1. Analyze the first chunk (e.g., 'name="start_of_cmd')
+    std::string firstArg = cmd.args[0];
+    size_t eqPos = firstArg.find('='); 
+
+    // Validation: Must contain '='
+    if (eqPos == std::string::npos) {
+        perrorSmash("alias", "invalid alias format");
+        return -1;
+    }
+
+    // Validation: Must have a quote right after '='
+    // We expect format: name="...
+    if (eqPos + 1 >= firstArg.length() || firstArg[eqPos + 1] != '"') {
+        perrorSmash("alias", "invalid alias format");
+        return -1;
+    }
+
+    // 2. Extract Key (everything before '=')
+    std::string aliasName = firstArg.substr(0, eqPos);
+
+    // 3. Extract Start of Value (everything after '="')
+    // eqPos is index of '=', eqPos+1 is '"', so we start at eqPos+2
+    std::string cmdString = firstArg.substr(eqPos + 2);
+
+    // 4. Reconstruct the broken string
+    // If there are spaces, the shell split them into args[1], args[2], etc.
+    for (size_t i = 1; i < cmd.args.size(); ++i) {
+        cmdString += " " + cmd.args[i];
+    }
+
+    // 5. Remove the closing quote
+    // The string currently ends with ", e.g., "ls -l"
+    if (!cmdString.empty() && cmdString.back() == '"') {
+        cmdString.pop_back();
+    } else {
+        // If we didn't find a closing quote, the input was malformed
+        perrorSmash("alias", "invalid alias format");
+        return -1;
+    }
+
+    // 6. Validation: Empty name or command?
+    if (aliasName.empty() || cmdString.empty()) {
+        perrorSmash("alias", "invalid alias format");
+        return -1;
+    }
+
+    // 7. Check if alias already exists (if your struct supports it), or just add/overwrite
+    // (Assuming your addAlias handles checking or overwriting)
+    aliasesList.addAlias(aliasName, cmdString);
+    
+    return 0;
+}
+
+int unalias(ShellCommand& cmd) {
+	if (cmd.nargs != 1) {
+		perrorSmash("unalias", "expected exactly 1 argument");
+		return -1;
 	}
+
+	std::string aliasName = cmd.args[0];
+
+	// Attempt to remove the alias
+	aliasesList.unAlias(aliasName);
+
+	return 0;
+}

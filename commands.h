@@ -70,6 +70,8 @@ int bg(ShellCommand& cmd, JobManager& jm);
 int quit(ShellCommand& cmd, JobManager& jm);
 int diff(ShellCommand& cmd);
 bool isUnsignedInt(const std::string& s);
+int alias(ShellCommand& cmd);
+int unalias(ShellCommand& cmd);
 
 #endif //COMMANDS_H
 

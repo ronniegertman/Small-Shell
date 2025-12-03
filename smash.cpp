@@ -23,6 +23,8 @@
 #define BG          7
 #define QUIT        8
 #define DIFF        9
+#define ALIAS       10
+#define UNALIAS     11
 
 
 /*=============================================================================
@@ -34,6 +36,7 @@
 =============================================================================*/
 char _line[CMD_LENGTH_MAX];
 JobManager jm;
+AliasedCmds aliasesList;
 /*=============================================================================
 * main function
 =============================================================================*/
@@ -104,9 +107,9 @@ void parse_prompt(ShellPrompt &prompt) {
 }
 
 int inner_index(std::string &cmd){
-	const char* innerCommands[9] = {"showpid","pwd","cd",
-		"jobs","kill","fg","bg","quit","diff"};
-	for(int i=1;i<10;i++){
+	const char* innerCommands[11] = {"showpid","pwd","cd",
+		"jobs","kill","fg","bg","quit","diff","alias","unalias"};
+	for(int i=1;i<12;i++){
 		if(cmd == innerCommands[i-1]){
 			return i;
 		}
@@ -135,6 +138,10 @@ int call_inner(ShellCommand &cmd, int innercmd){
 			return quit(cmd,jm);
 		case(DIFF):
 			return diff(cmd);
+		case(ALIAS):
+			return alias(cmd);
+		case(UNALIAS):
+			return unalias(cmd);
 		default:
 			printf("entered default in call_inner, need fixing\n");
 			return -1;
