@@ -85,6 +85,20 @@ void parse_prompt(ShellPrompt &prompt) {
     // The extraction operator (>>) reads tokens separated by whitespace.
     // It automatically handles and discards multiple spaces, and leading/trailing spaces.
 	prompt.leftover >> prompt.shellcmd.command; // first word is the command
+	if(aliasesList.isAlias(prompt.shellcmd.command)){
+        std::string expandedAlias = aliasesList.getCmd(prompt.shellcmd.command);
+		// Get the rest of the leftover line
+		std::string restOfLine;
+		std::getline(prompt.leftover, restOfLine);
+
+		std::string newBuffer = expandedAlias + restOfLine;
+
+		// Reset stream
+		prompt.leftover.clear();
+		prompt.leftover.str(newBuffer);
+		return;
+
+	}
     while (prompt.leftover >> word) {
 		// & will always come at the prompt's end
 		if(word == "&"){

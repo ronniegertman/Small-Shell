@@ -40,3 +40,28 @@ std::string AliasedCmds::getRealCmd(std::string aliascmd){
     }
     return "";
 }
+
+bool AliasedCmds::isAlias(std::string cmd) {
+    for (const auto& alias : aliasedList) {
+        // We compare against originalcmd because that's where we stored the name
+        if (alias.aliasedcmd == cmd) {
+            return true;
+        }
+    }
+    return false;
+}
+
+    std::string AliasedCmds::getCmd(std::string cmd) {
+    for (const auto& alias : aliasedList) {
+        if (alias.aliasedcmd == cmd) {
+            return alias.originalcmd;
+        }
+    }
+    return "";
+}
+
+void AliasedCmds::printAll() {
+    for (const auto& alias : aliasedList) {
+        printf("%s='%s'\n", alias.aliasedcmd.c_str(), alias.originalcmd.c_str());
+    }
+}
