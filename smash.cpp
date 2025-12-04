@@ -109,6 +109,12 @@ void parse_prompt(ShellPrompt &prompt) {
             // 2. Read everything up to the second quote (e.g. "echo 1 && echo 2")
             // This consumes the second quote from the stream.
             if (std::getline(prompt.leftover, valuePart, '"')) {
+				// Trim leading whitespace from the name part
+				// Because getline picked up the space left over by >>
+				size_t startPos = namePart.find_first_not_of(" \t");
+				if (startPos != std::string::npos) {
+					namePart = namePart.substr(startPos);
+				}
                 // 3. Reconstruct the full argument: name="value"
                 // Note: namePart usually has a leading space from the >> operator, which is fine
                 std::string fullAliasArg = namePart + '"' + valuePart + '"';
@@ -318,6 +324,7 @@ int main(int argc, char* argv[])
 		//initialize buffers for next command
 		_line[0] = '\0';
 		_cmd[0] = '\0';
+		//aliasesList.printAll(); // for debugging
 	}
 
 	return 0;
