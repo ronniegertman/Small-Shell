@@ -96,6 +96,7 @@ void parse_prompt(ShellPrompt &prompt) {
 		// Reset stream
 		prompt.leftover.clear();
 		prompt.leftover.str(newBuffer);
+		prompt.shellcmd.command = "";
 		return;
 
 	}
@@ -183,7 +184,9 @@ int exe_command(ShellCommand &cmd){
 	int status;
 	char* argv[MAX_ARGS + 2]; // +2 for command itself 
 	//and null terminator
-	
+	if(cmd.command == ""){ //good for alias handling
+			return 0;
+	}
 	//returns index of inner command if inner
 	//0 if outer
 	int innercmdIndex = inner_index(cmd.command); 

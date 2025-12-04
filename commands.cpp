@@ -431,7 +431,7 @@ int alias(ShellCommand& cmd, AliasedCmds& aliasesList) {
 
     // 7. Check if alias already exists (if your struct supports it), or just add/overwrite
     // (Assuming your addAlias handles checking or overwriting)
-    aliasesList.addAlias(aliasName, cmdString);
+    aliasesList.addAlias(cmdString, aliasName);
     
     return 0;
 }
