@@ -98,8 +98,27 @@ void parse_prompt(ShellPrompt &prompt) {
 		prompt.leftover.str(newBuffer);
 		prompt.shellcmd.command = "";
 		return;
-
 	}
+	if (prompt.shellcmd.command == "alias") {
+        // We assume the format: alias name="value..."
+        std::string namePart;
+        std::string valuePart;
+        // 1. Read everything up to the first quote (e.g. " name=")
+        // This consumes the first quote from the stream.
+        if (std::getline(prompt.leftover, namePart, '"')) {
+            // 2. Read everything up to the second quote (e.g. "echo 1 && echo 2")
+            // This consumes the second quote from the stream.
+            if (std::getline(prompt.leftover, valuePart, '"')) {
+                // 3. Reconstruct the full argument: name="value"
+                // Note: namePart usually has a leading space from the >> operator, which is fine
+                std::string fullAliasArg = namePart + '"' + valuePart + '"';
+                // 4. Store it
+                prompt.shellcmd.args.push_back(fullAliasArg);
+                prompt.shellcmd.nargs++;
+            }
+        }
+    }
+
     while (prompt.leftover >> word) {
 		// & will always come at the prompt's end
 		if(word == "&"){
