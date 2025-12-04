@@ -377,7 +377,7 @@ int diff(ShellCommand& cmd){
 		return returnCode;
 }
 
-int alias(ShellCommand& cmd) {
+int alias(ShellCommand& cmd, AliasedCmds& aliasesList) {
 	// format is alias <new_cmd_name>="<the command>"
     if (cmd.nargs == 0) {
 		perrorSmash("alias", "expected at least 1 argument");
@@ -436,7 +436,7 @@ int alias(ShellCommand& cmd) {
     return 0;
 }
 
-int unalias(ShellCommand& cmd) {
+int unalias(ShellCommand& cmd, AliasedCmds& aliasesList) {
 	if (cmd.nargs != 1) {
 		perrorSmash("unalias", "expected exactly 1 argument");
 		return -1;

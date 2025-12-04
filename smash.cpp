@@ -153,9 +153,9 @@ int call_inner(ShellCommand &cmd, int innercmd){
 		case(DIFF):
 			return diff(cmd);
 		case(ALIAS):
-			return alias(cmd);
+			return alias(cmd, aliasesList);
 		case(UNALIAS):
-			return unalias(cmd);
+			return unalias(cmd, aliasesList);
 		default:
 			printf("entered default in call_inner, need fixing\n");
 			return -1;
