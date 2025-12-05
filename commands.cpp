@@ -273,16 +273,12 @@ int quit(ShellCommand& cmd, JobManager& jm){
 		return -1;
 	}
 	if(cmd.nargs == 1 && cmd.args[0] == "kill"){
-		for (int i=0; i<jm.size(); i++){
-			Job* job = jm.getJobById(i);
-			if(job == nullptr){
-				continue;
-			}
-			if(jm.killJobById(job->jobId) == -1){
+		int jobId = 0;
+		while (!jm.isEmpty()) {
+			int jobId = jm.getLastJobId(); 
+			if(jm.killJobById(jobId) == -1){
 				perror("smash error: quit failed");
 				return -1;
-			}
-		}
 	}
 	exit(0);
 }
