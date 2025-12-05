@@ -274,7 +274,7 @@ int quit(ShellCommand& cmd, JobManager& jm){
 	}
 	if(cmd.nargs == 1 && cmd.args[0] == "kill"){
 		for (int i=0; i<jm.size(); i++){
-			Job* job = jm.getJobById(i+1);
+			Job* job = jm.getJobById(i);
 			if(job == nullptr){
 				continue;
 			}
