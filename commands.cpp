@@ -275,7 +275,7 @@ int quit(ShellCommand& cmd, JobManager& jm){
 	if(cmd.nargs == 1 && cmd.args[0] == "kill"){
 		int jobId = 0;
 		while (!jm.isEmpty()) {
-			int jobId = jm.getLastJobId(); 
+			int jobId = jm.getFirstJobId(); 
 			if(jm.killJobById(jobId) == -1){
 				perror("smash error: quit failed");
 				return -1;

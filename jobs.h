@@ -32,6 +32,7 @@ class JobManager{
 		bool isEmpty();
 		int size();
 		int getLastJobId();
+		int getFirstJobId();
 		int killJobById(int jobId);
 		void updateList();
 		void updateFgCmd(ShellCommand& cmd);
