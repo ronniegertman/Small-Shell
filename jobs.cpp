@@ -111,8 +111,7 @@ int JobManager::getLastJobId(){
 	}
 	return jobsList.back().jobId;
 }
-
-int Jobmanager::getFirstJobId(){
+int JobManager::getFirstJobId(){
 	if(jobsList.empty()){
 		return -1;
 	}
@@ -120,7 +119,6 @@ int Jobmanager::getFirstJobId(){
 }
 
 int JobManager::killJobById(int jobId){
-	printf("kill job id %d\n", jobId);
 	Job* job = getJobById(jobId);
 	if(job == nullptr){
 		return -1; // not found
