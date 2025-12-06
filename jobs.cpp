@@ -1,10 +1,13 @@
 #include "jobs.h"
 #include "my_system_call.h"
 #include "shellcommand.h"
+#include <cerrno>
 #include <vector>
 #include <sstream>
 #include <unistd.h>
 #include <ctime>
+#include "signal.h"
+#include "signals.h"
 
 // Job class functions
 Job::Job(const ShellCommand& command, unsigned int jobId, pid_t pid, int stat) :
@@ -137,12 +140,15 @@ int JobManager::killJobById(int jobId){
 		perror("smash error: kill failed");
 		return -1;
 	}
+  if (isSigInt) return -1;
+  
 	pid_t result;
 	int status = 0;
 	  for (int i = 0; i < 50; i++) {
         result = my_system_call(SYS_WAITPID ,job->pid, &status, WNOHANG);
 		if(result == -1){
-			perror("smash error: waitpid failed");
+      if (errno == EINTR) return -1;
+      perror("smash error: waitpid failed");
 			return -1;
 		}
         if (result == job->pid) {
@@ -153,6 +159,7 @@ int JobManager::killJobById(int jobId){
             return 0;
         }
         usleep(100 * 1000);  // 100ms
+        if (isSigInt) return -1;
     }
 
 	// sending SIGKILL
@@ -161,7 +168,9 @@ int JobManager::killJobById(int jobId){
 		perror("smash error: kill failed");
 		return -1;
 	}
+  if (isSigInt) return -1;
 	if(my_system_call(SYS_WAITPID ,job->pid, &status, 0) == -1){
+    if (errno == EINTR) return -1;
 		perror("smash error: waitpid failed");
 		return -1;
 	}
