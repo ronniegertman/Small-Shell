@@ -48,7 +48,6 @@ void handleSigStp() {
 		return;
 	}
 	fgpid = jm.fgcmd.pid;
-    jm.addJob(jm.fgcmd, fgpid, 3);
     // SIGSTOP = 19
     if(my_system_call(SYS_KILL, fgpid, 19) == -1) {
 		jm.removeJobByPid(fgpid);
@@ -68,8 +67,8 @@ void handleSigInt() {
 		return;
 	}
 	fgpid = jm.fgcmd.pid;
-    // SIGINT = 2
-    if(my_system_call(SYS_KILL, fgpid, 2) == -1) {
+    // SIGKILL = 9
+    if(my_system_call(SYS_KILL, fgpid, 9) == -1) {
         perror("smash error: kill failed");
     }
     jm.clearFgCmd();
@@ -205,6 +204,7 @@ void args_vector_to_array(ShellCommand &cmd, char **argv) {
 
 //void just for now
 int exe_command(ShellCommand &cmd){
+	jm.updateList(); //update before any cmd
 	pid_t pid;
 	int status;
 	char* argv[MAX_ARGS + 2]; // +2 for command itself 
@@ -296,8 +296,8 @@ int exe_command(ShellCommand &cmd){
 
 int main(int argc, char* argv[])
 {
-	signal(SIGINT, (__sighandler_t)handleSigInt);
-	signal(SIGTSTP, (__sighandler_t)handleSigStp);
+	my_system_call(SYS_SIGNAL,SIGINT, (__sighandler_t)handleSigInt);
+	my_system_call(SYS_SIGNAL,SIGTSTP, (__sighandler_t)handleSigStp);
 	char _cmd[CMD_LENGTH_MAX];
 	int execResult = 0;
 	ShellPrompt shellPrompt; //object to handle each prompt
