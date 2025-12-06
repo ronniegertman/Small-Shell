@@ -6,9 +6,12 @@
 * includes, defines, usings
 =============================================================================*/
 #include "jobs.h"
+
+extern bool isSigInt;
+
 /*=============================================================================
 * global functions
 =============================================================================*/
-void handleSigStp(JobManager& jm);
-void handleSigInt(JobManager& jm);
+void handleSigStp();
+void handleSigInt();
 #endif //__SIGNALS_H__

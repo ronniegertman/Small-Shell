@@ -1,9 +1,7 @@
 // signals.c
 #include "signals.h"
-#include "commands.h"
-#include "jobs.h"
-#include <unistd.h>
-#include "my_system_call.h"
+
+bool isSigInt = false;
 
 // ctrl - z
 // void handleSigStp(JobManager& jm) {

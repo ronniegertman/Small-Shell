@@ -1,11 +1,13 @@
 //commands.c
 #include "commands.h"
+#include <cerrno>
 #include <unistd.h>
 #include <fcntl.h>
 #include <string.h>
 #include "my_system_call.h"
 #include "jobs.h"
 #include "shellcommand.h"
+#include "signals.h"
 #include <vector>
 #include <ctime>
 #include <sstream>
@@ -108,7 +110,7 @@ int jobs(ShellCommand& cmd, JobManager& jm){
 		perrorSmash("jobs", "expected 0 arguments");
 		return -1;
 	}
-	printf("%s", jm.printJobsList().c_str());
+  printf("%s", jm.printJobsList().c_str());
 	return 0;
 }
 
@@ -149,6 +151,9 @@ int kill(ShellCommand& cmd, JobManager& jm){
 		perror("smash error: kill failed");
 		return -1;
 	}
+  if (sigNum == 19) {
+    job->status = 3;
+  }
 	return 0;
 }
 // fg
@@ -274,6 +279,9 @@ int quit(ShellCommand& cmd, JobManager& jm){
 	}
 	if(cmd.nargs == 1 && cmd.args[0] == "kill"){
 		while (!jm.isEmpty()) {
+      if (isSigInt) {
+        return -1;
+      }
 			int jobId = jm.getFirstJobId(); 
 			if(jm.killJobById(jobId) == -1){
 				perror("smash error: quit failed");
@@ -313,13 +321,17 @@ int diff(ShellCommand& cmd){
 	
 	f1 = (int)my_system_call(SYS_OPEN ,file1.c_str(), O_RDONLY);
 	if (f1 < 0) { 
-		perrorSmash("diff", "expected valid paths for files");
+    if (errno != EINTR) {
+      perrorSmash("diff", "expected valid paths for files");
+    }
 		returnCode = -1;
 		goto l_cleanup; 
 	}
 	f2 = (int)my_system_call(SYS_OPEN ,file2.c_str(), O_RDONLY);
 	if(f2 < 0){
-		perrorSmash("diff", "expected valid paths for files");
+    if (errno != EINTR) {
+      perrorSmash("diff", "expected valid paths for files");
+    }
 		returnCode = -1;
 		goto l_cleanup; 
 	}
@@ -327,6 +339,10 @@ int diff(ShellCommand& cmd){
 	while(1){
 		r1 = my_system_call(SYS_READ, f1, buf1, BUF_SIZE);
 		r2 = my_system_call(SYS_READ, f2, buf2, BUF_SIZE);
+    if (isSigInt || errno == EINTR) {
+      returnCode = -1;
+      goto l_cleanup;
+    }
 
         if (r1 < 0 || r2 < 0) {
 			if (errno == EISDIR) {
@@ -375,59 +391,43 @@ int diff(ShellCommand& cmd){
 }
 
 int alias(ShellCommand& cmd, AliasedCmds& aliasesList) {
-	// format is alias <new_cmd_name>="<the command>"
     if (cmd.nargs == 0) {
 		perrorSmash("alias", "expected at least 1 argument");
         return -1;
     }
-    // 1. Analyze the first chunk (e.g., 'name="start_of_cmd')
     std::string firstArg = cmd.args[0];
     size_t eqPos = firstArg.find('='); 
 
-    // Validation: Must contain '='
     if (eqPos == std::string::npos) {
         perrorSmash("alias", "invalid alias format");
         return -1;
     }
 
-    // Validation: Must have a quote right after '='
-    // We expect format: name="...
     if (eqPos + 1 >= firstArg.length() || firstArg[eqPos + 1] != '"') {
         perrorSmash("alias", "invalid alias format");
         return -1;
     }
 
-    // 2. Extract Key (everything before '=')
     std::string aliasName = firstArg.substr(0, eqPos);
 
-    // 3. Extract Start of Value (everything after '="')
-    // eqPos is index of '=', eqPos+1 is '"', so we start at eqPos+2
     std::string cmdString = firstArg.substr(eqPos + 2);
 
-    // 4. Reconstruct the broken string
-    // If there are spaces, the shell split them into args[1], args[2], etc.
     for (size_t i = 1; i < cmd.args.size(); ++i) {
         cmdString += " " + cmd.args[i];
     }
 
-    // 5. Remove the closing quote
-    // The string currently ends with ", e.g., "ls -l"
     if (!cmdString.empty() && cmdString.back() == '"') {
         cmdString.pop_back();
     } else {
-        // If we didn't find a closing quote, the input was malformed
         perrorSmash("alias", "invalid alias format");
         return -1;
     }
 
-    // 6. Validation: Empty name or command?
     if (aliasName.empty() || cmdString.empty()) {
         perrorSmash("alias", "invalid alias format");
         return -1;
     }
 
-    // 7. Check if alias already exists (if your struct supports it), or just add/overwrite
-    // (Assuming your addAlias handles checking or overwriting)
     aliasesList.addAlias(cmdString, aliasName);
     
     return 0;
@@ -441,7 +441,6 @@ int unalias(ShellCommand& cmd, AliasedCmds& aliasesList) {
 
 	std::string aliasName = cmd.args[0];
 
-	// Attempt to remove the alias
 	aliasesList.unAlias(aliasName);
 
 	return 0;
