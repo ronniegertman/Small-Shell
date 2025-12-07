@@ -212,6 +212,10 @@ int fg(ShellCommand& cmd, JobManager& jm){
 	}
 
 	jm.clearFgCmd();
+
+	if (WIFSTOPPED(status)) {
+	    jm.addJob(jobcmd, pid, 3);
+	}
 	return 0;
 }
 
