@@ -182,25 +182,43 @@ int JobManager::killJobById(int jobId){
 	return 0; // success
 }
 
-void JobManager::updateList(){
-	// check each job if it is done
-	std::vector<int> pidsToRemove;
-	for(const auto& job : jobsList) {
-		pid_t result = my_system_call(SYS_WAITPID ,job.pid, nullptr, WNOHANG);
-		if(result == -1){
-			perror("smash error: waitpid failed");
-			continue;
-		}
-		if (result == job.pid) {
-			// job is done
-			pidsToRemove.push_back(job.pid);
-		}
-	}
-	// remove done jobs
-	for(const auto pid : pidsToRemove){
-		JobManager::removeJobByPid(pid);
-	}
+void JobManager::updateList() {
+    int status;
+    for (auto it = jobsList.begin(); it != jobsList.end(); /* no increment here */) {
+        Job& job = *it; // Get a reference to the current job
+        pid_t result = my_system_call(SYS_WAITPID, job.pid, &status, WNOHANG | WUNTRACED | WCONTINUED);
+
+        if (result == -1) {
+            perror("smash error: waitpid failed");
+            ++it;
+            continue;
+        }
+
+        if (result == job.pid) {
+            // Status changed or process finished
+            if (WIFEXITED(status) || WIFSIGNALED(status)) {
+                // Process finished -> Remove from list
+                // erase() removes the element and returns the iterator to the *next* element
+                it = jobsList.erase(it);
+            } 
+            else if (WIFSTOPPED(status)) {
+                // Process stopped -> Update status
+                job.status = 3; // 3 = STOPPED
+                ++it;
+            } 
+            else if (WIFCONTINUED(status)) {
+                job.status = 2; // 2 = BACKGROUND
+                ++it;
+            } 
+            else {
+                ++it;
+            }
+        } else {
+            ++it;
+        }
+    }
 }
+
 
 void JobManager::updateFgCmd(ShellCommand& cmd){
 	this->fgactive = true;
