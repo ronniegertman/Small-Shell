@@ -231,11 +231,11 @@ int exe_command(ShellCommand &cmd){
 			int exerr = my_system_call(SYS_EXECVP,cmd.command.c_str(),argv);
 			if(exerr == -1){ // execvp failed
 				if(errno == ENOENT){ // command not found
-					perror("smash error: external: cannot find program");
+					perrorSmash("external", "cannot find program");
 					exit(1);
 				}
 				else{
-					perror("smash error: external: invalid command");
+					perrorSmash("external", "invalid command");
 					exit(1);
 				}
 			}
