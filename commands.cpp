@@ -288,7 +288,7 @@ int quit(ShellCommand& cmd, JobManager& jm){
       }
 			int jobId = jm.getFirstJobId(); 
 			if(jm.killJobById(jobId) == -1){
-				perror("smash error: quit failed");
+				perror("smash error: kill failed");
 				return -1;
 			}
 		}
