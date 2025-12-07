@@ -9,17 +9,7 @@ Alias::Alias(std::string originalcmd, std::string aliasedcmd) : originalcmd(std:
 aliasedcmd(std::move(aliasedcmd)){}
 
 void AliasedCmds::addAlias(std::string original, std::string aliased){
-	if (isAlias(aliased)) {
-        // 2. If it exists, find it and overwrite the command definition
-        for (auto &aliasObj : aliasedList) {
-            if (aliasObj.aliasedcmd == aliased) {
-                aliasObj.originalcmd = original;
-                return;
-            }
-        }
-    }
-    
-    Alias toadd(original, aliased);
+	Alias toadd(original, aliased);
 	aliasedList.push_back(toadd);
 }
 
