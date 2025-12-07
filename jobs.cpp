@@ -134,7 +134,8 @@ int JobManager::killJobById(int jobId){
 	}
 	if(job->cmd.isBackground){ out << " &"; }
 	out << " - " << "sending SIGTERM... ";
-
+	printf("%s", out.str().c_str());
+	out.str(""); // clear the stringstream
 	//SIGTERM = 15
 	if(my_system_call(SYS_KILL, job->pid, 15) == -1){
 		perror("smash error: kill failed");
@@ -153,9 +154,8 @@ int JobManager::killJobById(int jobId){
 		}
         if (result == job->pid) {
             // child exited during wait
-			out << "done\n";
+			printf("done\n");
             removeJobByPid(job->pid);
-			printf("%s", out.str().c_str());
             return 0;
         }
         usleep(100 * 1000);  // 100ms
