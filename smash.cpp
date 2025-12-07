@@ -13,6 +13,8 @@
 #include <string.h>
 #include <csignal>
 #include <unistd.h>
+#include "signal.h"
+#include "signals.h"
 
 #define SHOWPID     1
 #define PWD         2
@@ -60,9 +62,10 @@ void handleSigStp() {
 
 void handleSigInt() {
 	pid_t fgpid;
+  isSigInt = true;
 
     // check if this is the shell process
-    printf("smash: caught CTRL+C\n");
+    printf("smash: caught CTRL+C\nsmash >");
 	if(jm.fgactive == false){  // no other process but the shell is in fg
 		return;
 	}
@@ -78,11 +81,8 @@ void handleSigInt() {
 
 void parse_prompt(ShellPrompt &prompt) {
     std::vector<std::string> words;
-    // Use an istringstream to handle the splitting
     std::string word;
 
-    // The extraction operator (>>) reads tokens separated by whitespace.
-    // It automatically handles and discards multiple spaces, and leading/trailing spaces.
 	prompt.leftover >> prompt.shellcmd.command; // first word is the command
 	if(aliasesList.isAlias(prompt.shellcmd.command)){
         std::string expandedAlias = aliasesList.getCmd(prompt.shellcmd.command);
@@ -92,7 +92,6 @@ void parse_prompt(ShellPrompt &prompt) {
 
 		std::string newBuffer = expandedAlias + restOfLine;
 
-		// Reset stream
 		prompt.leftover.clear();
 		prompt.leftover.str(newBuffer);
 		prompt.shellcmd.command = "";
@@ -102,22 +101,13 @@ void parse_prompt(ShellPrompt &prompt) {
         // We assume the format: alias name="value..."
         std::string namePart;
         std::string valuePart;
-        // 1. Read everything up to the first quote (e.g. " name=")
-        // This consumes the first quote from the stream.
         if (std::getline(prompt.leftover, namePart, '"')) {
-            // 2. Read everything up to the second quote (e.g. "echo 1 && echo 2")
-            // This consumes the second quote from the stream.
             if (std::getline(prompt.leftover, valuePart, '"')) {
-				// Trim leading whitespace from the name part
-				// Because getline picked up the space left over by >>
 				size_t startPos = namePart.find_first_not_of(" \t");
 				if (startPos != std::string::npos) {
 					namePart = namePart.substr(startPos);
 				}
-                // 3. Reconstruct the full argument: name="value"
-                // Note: namePart usually has a leading space from the >> operator, which is fine
                 std::string fullAliasArg = namePart + '"' + valuePart + '"';
-                // 4. Store it
                 prompt.shellcmd.args.push_back(fullAliasArg);
                 prompt.shellcmd.nargs++;
             }
@@ -125,14 +115,13 @@ void parse_prompt(ShellPrompt &prompt) {
     }
 
     while (prompt.leftover >> word) {
-		// & will always come at the prompt's end
-		if(word == "&"){
+		if(word == "&"){ // & will always come at the prompt's end
 			prompt.shellcmd.isBackground = true;
 			prompt.isPromptDone = true;
 			return;
 		}
-		// && meaning the prompt is not done
-		else if(word == "&&"){
+		
+		else if(word == "&&"){ // && meaning the prompt is not done
 			return;
 		}
 		else{
@@ -140,7 +129,6 @@ void parse_prompt(ShellPrompt &prompt) {
 			prompt.shellcmd.nargs++;
 		}
     }
-	//prompt is done if reached here
 	prompt.isPromptDone = true;
     return;
 }
@@ -188,27 +176,20 @@ int call_inner(ShellCommand &cmd, int innercmd){
 }
 
 void args_vector_to_array(ShellCommand &cmd, char **argv) {
-    // 1. argv[0] must be the command name itself
-    // We use const_cast because c_str() returns 'const char*' 
-    // but the execvp signature (and your array) expects 'char*'
     argv[0] = const_cast<char*>(cmd.command.c_str());
 
-    // 2. Copy the arguments from the vector to the array starting at index 1
     for (size_t i = 0; i < cmd.args.size(); ++i) {
         argv[i + 1] = const_cast<char*>(cmd.args[i].c_str());
     }
 
-    // 3. The array MUST be terminated by a NULL pointer for execvp to know where to stop
     argv[cmd.nargs + 1] = NULL;
 }
 
-//void just for now
 int exe_command(ShellCommand &cmd){
 	jm.updateList(); //update before any cmd
 	pid_t pid;
 	int status;
 	char* argv[MAX_ARGS + 2]; // +2 for command itself 
-	//and null terminator
 	if(cmd.command == ""){ //good for alias handling
 			return 0;
 	}
@@ -235,7 +216,6 @@ int exe_command(ShellCommand &cmd){
 				return 0;
 			}
 			else{
-				// fork failed
 				perror("smash error: fork failed");
 				exit(1);
 			}
@@ -251,11 +231,11 @@ int exe_command(ShellCommand &cmd){
 			int exerr = my_system_call(SYS_EXECVP,cmd.command.c_str(),argv);
 			if(exerr == -1){ // execvp failed
 				if(errno == ENOENT){ // command not found
-					perror("smash error: external: cannot find program");
+					perrorSmash("external", "cannot find program");
 					exit(1);
 				}
 				else{
-					perror("smash error: external: invalid command");
+					perrorSmash("external", "invalid command");
 					exit(1);
 				}
 			}
@@ -283,7 +263,6 @@ int exe_command(ShellCommand &cmd){
 			}
 		}
 		else{
-			// fork failed
 			perror("smash error: fork failed");
 			exit(1);
 			}
@@ -302,10 +281,11 @@ int main(int argc, char* argv[])
 	int execResult = 0;
 	ShellPrompt shellPrompt; //object to handle each prompt
 	while(1) {
+    isSigInt = false;
 		printf("smash > ");
 		fgets(_line, CMD_LENGTH_MAX, stdin);
 		strcpy(_cmd, _line);
-		shellPrompt.leftover  << _cmd; //put prompt in ss
+		shellPrompt.leftover  << _cmd;
 		shellPrompt.isPromptDone = false;
 		//inner loop to handle &&
 		while(shellPrompt.isPromptDone == false){
@@ -319,12 +299,11 @@ int main(int argc, char* argv[])
 				break;
 			}
 		}
-		shellPrompt.leftover.clear(); //reset ss to get data
-		shellPrompt.leftover.str(""); //Empty the text buffer
+		shellPrompt.leftover.clear();
+		shellPrompt.leftover.str("");
 		//initialize buffers for next command
 		_line[0] = '\0';
 		_cmd[0] = '\0';
-		//aliasesList.printAll(); // for debugging
 	}
 
 	return 0;
