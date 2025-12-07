@@ -135,6 +135,7 @@ int JobManager::killJobById(int jobId){
 	if(job->cmd.isBackground){ out << " &"; }
 	out << " - " << "sending SIGTERM... ";
 	printf("%s", out.str().c_str());
+	fflush(stdout);
 	out.str(""); // clear the stringstream
 	//SIGTERM = 15
 	if(my_system_call(SYS_KILL, job->pid, 15) == -1){
